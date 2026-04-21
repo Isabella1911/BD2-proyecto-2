@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Login from "./pages/Login";
-import Manager from "./pages/Manager";
-import Gerente from "./pages/Gerente";
+import Manager from "./pages/manager/ManagerLayout";
+import Gerente from "./pages/gerente/Gerente";
 
 export default function App() {
   const [page, setPage] = useState("login");
