@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from neo4j import Session
-from database import get_db
+from database import get_db, node_to_dict, serialize
 from models import (
     AsignadoACreate, SupervisaCreate,
     TieneInventarioCreate, AlmacenadoEnCreate,

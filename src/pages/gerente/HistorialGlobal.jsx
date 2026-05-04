@@ -1,31 +1,22 @@
-const ordenes = [
-  {
-    id: "ORD-001",
-    sucursal: "Sucursal Central",
-    almacen: "Almacén Central",
-    estado: "Entregada",
-    total: 850,
-    urgencia: "Alta",
-  },
-  {
-    id: "ORD-002",
-    sucursal: "Sucursal Norte",
-    almacen: "Almacén Norte",
-    estado: "En transporte",
-    total: 430,
-    urgencia: "Normal",
-  },
-  {
-    id: "ORD-003",
-    sucursal: "Sucursal Sur",
-    almacen: "Almacén Central",
-    estado: "Pendiente",
-    total: 1200,
-    urgencia: "Urgente",
-  },
-];
+import { useEffect, useState } from "react";
+import { getOrdenes } from "../../services/api";
 
 export default function HistorialGlobal() {
+  const [ordenes, setOrdenes] = useState([]);
+  const [estadoFiltro, setEstadoFiltro] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const params = {};
+    if (estadoFiltro) params.estado = estadoFiltro;
+
+    setLoading(true);
+    getOrdenes(params)
+      .then(setOrdenes)
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [estadoFiltro]);
+
   return (
     <div className="section-panel gerente-panel">
       <p className="eyebrow">Historial global</p>
@@ -34,22 +25,39 @@ export default function HistorialGlobal() {
         Vista general de órdenes creadas por todas las sucursales.
       </p>
 
-      {/* BACKEND FUTURO:
-        GET /api/ordenes
-      */}
-
-      <div className="data-list">
-        {ordenes.map((orden) => (
-          <p key={orden.id}>
-            <strong>
-              {orden.id} - {orden.sucursal}
-            </strong>
-            <span>
-              {orden.estado} | Q{orden.total}
-            </span>
-          </p>
-        ))}
+      <div style={{ marginBottom: "1rem" }}>
+        <label>Filtrar por estado: </label>
+        <select
+          value={estadoFiltro}
+          onChange={(e) => setEstadoFiltro(e.target.value)}
+        >
+          <option value="">Todos</option>
+          <option value="pendiente">Pendiente</option>
+          <option value="aprobada">Aprobada</option>
+          <option value="en_transporte">En transporte</option>
+          <option value="entregada">Entregada</option>
+          <option value="cancelada">Cancelada</option>
+        </select>
       </div>
+
+      {loading ? (
+        <p className="muted">Cargando órdenes...</p>
+      ) : (
+        <div className="data-list">
+          {ordenes.length === 0 ? (
+            <p className="muted">No hay órdenes.</p>
+          ) : (
+            ordenes.map((orden) => (
+              <p key={orden.id}>
+                <strong>{orden.id}</strong>
+                <span>
+                  {orden.estado} | Q{orden.total} | {orden.urgencia}
+                </span>
+              </p>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }

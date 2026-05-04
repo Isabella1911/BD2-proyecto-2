@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from neo4j import Session
-from database import get_db
+from database import get_db, node_to_dict, serialize
 from models import ProductoCreate, ProductoUpdate, BulkPropertyUpdate, BulkPropertyDelete
 import uuid
 
@@ -56,7 +56,7 @@ def listar_productos(
 
     where = ("WHERE " + " AND ".join(filters)) if filters else ""
     result = db.run(f"MATCH (p:Producto) {where} RETURN p ORDER BY p.nombre", **params)
-    return [dict(r["p"]) for r in result]
+    return [node_to_dict(r["p"]) for r in result]
 
 
 @router.get("/agregados")
@@ -81,7 +81,7 @@ def obtener_producto(pid: str, db: Session = Depends(get_db)):
     record = result.single()
     if not record:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
-    return dict(record["p"])
+    return node_to_dict(record["p"])
 
 
 @router.get("/{pid}/almacenes")
@@ -94,7 +94,7 @@ def almacenes_del_producto(pid: str, db: Session = Depends(get_db)):
         id=pid,
     )
     return [
-        {**dict(r["a"]), "cantidad": r["cantidad"],
+        {**node_to_dict(r["a"]), "cantidad": r["cantidad"],
          "fecha_ingreso": r["fecha_ingreso"], "ubicacion": r["ubicacion"]}
         for r in result
     ]
@@ -122,7 +122,7 @@ def actualizar_producto(pid: str, data: ProductoUpdate, db: Session = Depends(ge
     record = result.single()
     if not record:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
-    return dict(record["p"])
+    return node_to_dict(record["p"])
 
 
 @router.patch("/bulk/propiedades")

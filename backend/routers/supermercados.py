@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from neo4j import Session
-from database import get_db
+from database import get_db, node_to_dict, serialize
 from models import SupermercadoCreate, SupermercadoUpdate, BulkPropertyUpdate, BulkPropertyDelete
 import uuid
 
@@ -41,7 +41,7 @@ def listar_supermercados(activo: bool = None, cadena: str = None, db: Session = 
         params["cadena"] = cadena
     where = ("WHERE " + " AND ".join(filters)) if filters else ""
     result = db.run(f"MATCH (s:Supermercado) {where} RETURN s", **params)
-    return [dict(r["s"]) for r in result]
+    return [node_to_dict(r["s"]) for r in result]
 
 
 @router.get("/agregados")
@@ -63,7 +63,7 @@ def obtener_supermercado(sid: str, db: Session = Depends(get_db)):
     record = result.single()
     if not record:
         raise HTTPException(status_code=404, detail="Supermercado no encontrado")
-    return dict(record["s"])
+    return node_to_dict(record["s"])
 
 
 @router.get("/{sid}/inventario")
@@ -79,7 +79,7 @@ def inventario_supermercado(sid: str, db: Session = Depends(get_db)):
         id=sid,
     )
     return [
-        {**dict(r["p"]), "cantidad": r["cantidad"],
+        {**node_to_dict(r["p"]), "cantidad": r["cantidad"],
          "stock_minimo": r["stock_minimo"], "fecha_actualizacion": r["fecha_actualizacion"]}
         for r in result
     ]
@@ -96,9 +96,9 @@ def usuarios_supermercado(sid: str, db: Session = Depends(get_db)):
     )
     rows = []
     for r in result:
-        u = dict(r["u"])
+        u = node_to_dict(r["u"])
         u.pop("password", None)
-        rows.append({"usuario": u, "relacion": r["tipo_rel"], "props_rel": dict(r["r"])})
+        rows.append({"usuario": u, "relacion": r["tipo_rel"], "props_rel": node_to_dict(r["r"])})
     return rows
 
 
@@ -117,7 +117,7 @@ def actualizar_supermercado(sid: str, data: SupermercadoUpdate, db: Session = De
     record = result.single()
     if not record:
         raise HTTPException(status_code=404, detail="Supermercado no encontrado")
-    return dict(record["s"])
+    return node_to_dict(record["s"])
 
 
 @router.patch("/bulk/propiedades")

@@ -1,45 +1,38 @@
-const sucursales = [
-  {
-    id: 1,
-    nombre: "Sucursal Central",
-    direccion: "Zona 10",
-    activa: true,
-    manager: "Manager Central",
-  },
-  {
-    id: 2,
-    nombre: "Sucursal Norte",
-    direccion: "Mixco",
-    activa: true,
-    manager: "Manager Norte",
-  },
-  {
-    id: 3,
-    nombre: "Sucursal Sur",
-    direccion: "Villa Nueva",
-    activa: true,
-    manager: "Manager Sur",
-  },
-];
+import { useEffect, useState } from "react";
+import { getSupermercados } from "../../services/api";
 
 export default function SucursalesActivas() {
+  const [sucursales, setSucursales] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getSupermercados({ activo: true })
+      .then(setSucursales)
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
     <div className="section-panel gerente-panel">
       <p className="eyebrow">Sucursales</p>
       <h2>Sucursales activas</h2>
 
-      {/* BACKEND FUTURO:
-        GET /api/sucursales?activo=true
-      */}
-
-      <div className="data-list">
-        {sucursales.map((sucursal) => (
-          <p key={sucursal.id}>
-            <strong>{sucursal.nombre}</strong>
-            <span>{sucursal.direccion}</span>
-          </p>
-        ))}
-      </div>
+      {loading ? (
+        <p className="muted">Cargando sucursales...</p>
+      ) : (
+        <div className="data-list">
+          {sucursales.length === 0 ? (
+            <p className="muted">No hay sucursales activas.</p>
+          ) : (
+            sucursales.map((s) => (
+              <p key={s.id}>
+                <strong>{s.nombre}</strong>
+                <span>{s.direccion} — {s.cadena}</span>
+              </p>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }

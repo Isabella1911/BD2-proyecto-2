@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from neo4j import Session
-from database import get_db
+from database import get_db, node_to_dict, serialize
 from models import TransportistaCreate, TransportistaUpdate, TransportadaPorCreate, DistribuyeCreate, BulkPropertyUpdate, BulkPropertyDelete
 import uuid
 
@@ -39,7 +39,7 @@ def listar_transportistas(activo: bool = None, db: Session = Depends(get_db)):
         params["activo"] = activo
     where = ("WHERE " + " AND ".join(filters)) if filters else ""
     result = db.run(f"MATCH (t:Transportista) {where} RETURN t ORDER BY t.rating DESC", **params)
-    return [dict(r["t"]) for r in result]
+    return [node_to_dict(r["t"]) for r in result]
 
 
 @router.get("/agregados")
@@ -63,7 +63,7 @@ def obtener_transportista(tid: str, db: Session = Depends(get_db)):
     record = result.single()
     if not record:
         raise HTTPException(status_code=404, detail="Transportista no encontrado")
-    return dict(record["t"])
+    return node_to_dict(record["t"])
 
 
 @router.get("/{tid}/ordenes")
@@ -77,7 +77,7 @@ def ordenes_del_transportista(tid: str, db: Session = Depends(get_db)):
         id=tid,
     )
     return [
-        {**dict(r["o"]), "costo": r["costo"],
+        {**node_to_dict(r["o"]), "costo": r["costo"],
          "ubicacion": r["ubicacion"], "fecha_entrega": r["fecha_entrega"]}
         for r in result
     ]
@@ -93,7 +93,7 @@ def almacenes_del_transportista(tid: str, db: Session = Depends(get_db)):
         id=tid,
     )
     return [
-        {**dict(r["a"]), "zona": r["zona"],
+        {**node_to_dict(r["a"]), "zona": r["zona"],
          "rel_activo": r["activo"], "calificacion": r["calificacion"]}
         for r in result
     ]
@@ -154,7 +154,7 @@ def actualizar_transportista(tid: str, data: TransportistaUpdate, db: Session = 
     record = result.single()
     if not record:
         raise HTTPException(status_code=404, detail="Transportista no encontrado")
-    return dict(record["t"])
+    return node_to_dict(record["t"])
 
 
 @router.patch("/bulk/propiedades")

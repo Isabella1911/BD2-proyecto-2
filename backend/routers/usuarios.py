@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from neo4j import Session
-from database import get_db
+from database import get_db, node_to_dict, serialize
 from models import UsuarioCreate, UsuarioUpdate, UsuarioLogin, BulkPropertyUpdate, BulkPropertyDelete
 import uuid
 
@@ -19,8 +19,23 @@ def login(data: UsuarioLogin, db: Session = Depends(get_db)):
     record = result.single()
     if not record:
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
-    u = dict(record["u"])
+    u = node_to_dict(record["u"])
     u.pop("password", None)
+
+    # Si es Manager, adjuntamos su supermercado asignado
+    if u.get("rol") == "Manager":
+        sup = db.run(
+            """
+            MATCH (u:Usuario {id: $id})-[:ASIGNADO_A]->(s:Supermercado)
+            RETURN s.id AS supermercado_id, s.nombre AS supermercado_nombre
+            LIMIT 1
+            """,
+            id=u["id"],
+        ).single()
+        if sup:
+            u["supermercado_id"] = sup["supermercado_id"]
+            u["supermercado_nombre"] = sup["supermercado_nombre"]
+
     return {"ok": True, "usuario": u}
 
 
@@ -98,7 +113,7 @@ def listar_usuarios(rol: str = None, activo: bool = None, db: Session = Depends(
     result = db.run(f"MATCH (u:Usuario) {where} RETURN u", **params)
     usuarios = []
     for r in result:
-        u = dict(r["u"])
+        u = node_to_dict(r["u"])
         u.pop("password", None)
         usuarios.append(u)
     return usuarios
@@ -121,7 +136,7 @@ def obtener_usuario(uid: str, db: Session = Depends(get_db)):
     record = result.single()
     if not record:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    u = dict(record["u"])
+    u = node_to_dict(record["u"])
     u.pop("password", None)
     return u
 
@@ -141,7 +156,7 @@ def actualizar_usuario(uid: str, data: UsuarioUpdate, db: Session = Depends(get_
     record = result.single()
     if not record:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    u = dict(record["u"])
+    u = node_to_dict(record["u"])
     u.pop("password", None)
     return u
 

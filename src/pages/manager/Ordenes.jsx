@@ -1,127 +1,109 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { getAlmacenes, getProductosAlmacen, crearOrden } from "../../services/api";
 
-const almacenesMock = [
-  {
-    id: "alm-1",
-    nombre: "Almacén Central",
-    lugar: "Guatemala",
-    productos: [
-      { id: 1, nombre: "Corte de carne", categoria: "Carnes", precio: 35, stock: 80 },
-      { id: 2, nombre: "Pollo", categoria: "Carnes", precio: 25, stock: 120 },
-      { id: 3, nombre: "Papas", categoria: "Verduras", precio: 5, stock: 300 },
-      { id: 4, nombre: "Tomates", categoria: "Verduras", precio: 6, stock: 200 },
-    ],
-  },
-  {
-    id: "alm-2",
-    nombre: "Almacén Norte",
-    lugar: "Mixco",
-    productos: [
-      { id: 5, nombre: "Leche", categoria: "Lácteos", precio: 8, stock: 150 },
-      { id: 6, nombre: "Queso", categoria: "Lácteos", precio: 18, stock: 60 },
-      { id: 7, nombre: "Agua pura", categoria: "Bebidas", precio: 4, stock: 400 },
-      { id: 8, nombre: "Jugos", categoria: "Bebidas", precio: 7, stock: 90 },
-    ],
-  },
-];
-
-export default function Ordenes() {
-  const [almacenId, setAlmacenId] = useState(almacenesMock[0].id);
-  const [urgencia, setUrgencia] = useState("Normal");
+export default function Ordenes({ user }) {
+  const [almacenes, setAlmacenes] = useState([]);
+  const [almacenId, setAlmacenId] = useState("");
+  const [productos, setProductos] = useState([]);
+  const [urgencia, setUrgencia] = useState("normal");
   const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [loadingProductos, setLoadingProductos] = useState(false);
 
-  const almacenSeleccionado = almacenesMock.find((a) => a.id === almacenId);
+  // Cargar almacenes activos
+  useEffect(() => {
+    getAlmacenes({ activo: true })
+      .then((data) => {
+        setAlmacenes(data);
+        if (data.length > 0) setAlmacenId(data[0].id);
+      })
+      .catch(console.error);
+  }, []);
 
-  const productosDisponibles = almacenSeleccionado?.productos || [];
+  // Cargar productos del almacén seleccionado
+  useEffect(() => {
+    if (!almacenId) return;
+    setLoadingProductos(true);
+    setItems([]);
+    getProductosAlmacen(almacenId)
+      .then(setProductos)
+      .catch(console.error)
+      .finally(() => setLoadingProductos(false));
+  }, [almacenId]);
 
-  const total = useMemo(() => {
-    return items.reduce((acc, item) => acc + item.precio * item.cantidad, 0);
-  }, [items]);
+  const total = useMemo(
+    () => items.reduce((acc, item) => acc + item.precio * item.cantidad, 0),
+    [items]
+  );
 
   const agregarProducto = (producto) => {
     setItems((prev) => {
-      const existe = prev.find((item) => item.id === producto.id);
-
+      const existe = prev.find((i) => i.id === producto.id);
       if (existe) {
-        return prev.map((item) =>
-          item.id === producto.id && item.cantidad < producto.stock
-            ? { ...item, cantidad: item.cantidad + 1 }
-            : item
+        return prev.map((i) =>
+          i.id === producto.id && i.cantidad < producto.cantidad
+            ? { ...i, cantidad: i.cantidad + 1 }
+            : i
         );
       }
-
-      return [
-        ...prev,
-        {
-          ...producto,
-          cantidad: 1,
-          subtotal: producto.precio,
-        },
-      ];
+      return [...prev, { ...producto, cantidad: 1 }];
     });
   };
 
   const cambiarCantidad = (id, cantidadNueva) => {
     const cantidad = Number(cantidadNueva);
-
     setItems((prev) =>
       prev.map((item) =>
         item.id === id
-          ? {
-              ...item,
-              cantidad: cantidad > item.stock ? item.stock : cantidad,
-              subtotal: item.precio * cantidad,
-            }
+          ? { ...item, cantidad: Math.min(cantidad, item.cantidad) }
           : item
       )
     );
   };
 
   const eliminarProducto = (id) => {
-    setItems((prev) => prev.filter((item) => item.id !== id));
+    setItems((prev) => prev.filter((i) => i.id !== id));
   };
 
-  const crearOrden = () => {
-    const nuevaOrden = {
-      id: crypto.randomUUID(),
-      fecha: new Date().toISOString(),
-      total,
+  const crearOrdenHandler = async () => {
+    if (items.length === 0) return;
+
+    // Necesitamos supermercado_id del usuario
+    // Por ahora tomamos el primer supermercado disponible si el usuario no lo tiene
+    console.log("USER EN ORDENES:", user);
+    const supermercadoId = user?.supermercado_id;
+    if (!supermercadoId) {
+      alert("Tu usuario no tiene una sucursal asignada. Contacta al administrador.");
+      return;
+    }
+
+    const body = {
       urgencia,
-      estado: "Pendiente",
-      almacen: almacenSeleccionado.nombre,
-      sucursalDestino: "Sucursal Central",
+      estado: "pendiente",
+      total: parseFloat(total.toFixed(2)),
+      usuario_id: user.id,
+      supermercado_id: supermercadoId,
+      almacen_id: almacenId,
       items: items.map((item) => ({
-        producto: item.nombre,
-        precio: item.precio,
+        producto_id: item.id,
         cantidad: item.cantidad,
-        subtotal: item.precio * item.cantidad,
+        precio_unitario: item.precio,
+        descuento: 0,
+        devolucion: false,
       })),
     };
 
-    console.log("Orden creada:", nuevaOrden);
-
-    /*
-      CUANDO HAYA BACKEND:
-
-      1. Quitar almacenesMock.
-      2. Cargar almacenes con:
-         GET /api/almacenes
-
-      3. Cargar productos del almacén seleccionado con:
-         GET /api/almacenes/:id/productos
-
-      4. Crear orden con:
-         POST /api/ordenes
-
-      En Neo4j el backend debería crear:
-      (Manager)-[:REALIZA_PEDIDO]->(Orden)
-      (Almacen)-[:DESPACHA]->(Orden)
-      (Orden)-[:INCLUYE {cantidad, precio_unitario, subtotal}]->(Producto)
-      (Orden)-[:DESTINADA_A]->(Supermercado)
-    */
-
-    alert("Orden creada en modo simulación");
-    setItems([]);
+    setLoading(true);
+    try {
+      const orden = await crearOrden(body);
+      console.log("Orden creada, ID:", orden.id);
+      alert("¡Orden creada exitosamente!");
+      setItems([]);
+    } catch (err) {
+      alert("Error creando orden: " + err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -138,14 +120,11 @@ export default function Ordenes() {
           <label>Almacén proveedor</label>
           <select
             value={almacenId}
-            onChange={(e) => {
-              setAlmacenId(e.target.value);
-              setItems([]);
-            }}
+            onChange={(e) => setAlmacenId(e.target.value)}
           >
-            {almacenesMock.map((almacen) => (
-              <option key={almacen.id} value={almacen.id}>
-                {almacen.nombre} - {almacen.lugar}
+            {almacenes.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.nombre} - {a.lugar}
               </option>
             ))}
           </select>
@@ -153,13 +132,11 @@ export default function Ordenes() {
 
         <div>
           <label>Urgencia</label>
-          <select
-            value={urgencia}
-            onChange={(e) => setUrgencia(e.target.value)}
-          >
-            <option>Normal</option>
-            <option>Alta</option>
-            <option>Urgente</option>
+          <select value={urgencia} onChange={(e) => setUrgencia(e.target.value)}>
+            <option value="baja">Baja</option>
+            <option value="normal">Normal</option>
+            <option value="alta">Alta</option>
+            <option value="urgente">Urgente</option>
           </select>
         </div>
       </section>
@@ -168,19 +145,28 @@ export default function Ordenes() {
         <div className="products-panel">
           <h3>Productos disponibles</h3>
 
-          <div className="available-products">
-            {productosDisponibles.map((producto) => (
-              <button
-                key={producto.id}
-                className="available-product"
-                onClick={() => agregarProducto(producto)}
-              >
-                <strong>{producto.nombre}</strong>
-                <span>{producto.categoria}</span>
-                <small>Q{producto.precio} | Stock: {producto.stock}</small>
-              </button>
-            ))}
-          </div>
+          {loadingProductos ? (
+            <p className="muted">Cargando productos...</p>
+          ) : (
+            <div className="available-products">
+              {productos.map((producto) => (
+                <button
+                  key={producto.id}
+                  className="available-product"
+                  onClick={() => agregarProducto(producto)}
+                >
+                  <strong>{producto.nombre}</strong>
+                  <span>{producto.categoria}</span>
+                  <small>
+                    Q{producto.precio} | Stock: {producto.cantidad}
+                  </small>
+                </button>
+              ))}
+              {productos.length === 0 && (
+                <p className="muted">No hay productos en este almacén.</p>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="summary-panel">
@@ -200,12 +186,12 @@ export default function Ordenes() {
                   <input
                     type="number"
                     min="1"
-                    max={item.stock}
+                    max={item.cantidad}
                     value={item.cantidad}
                     onChange={(e) => cambiarCantidad(item.id, e.target.value)}
                   />
 
-                  <p>Q{item.precio * item.cantidad}</p>
+                  <p>Q{(item.precio * item.cantidad).toFixed(2)}</p>
 
                   <button onClick={() => eliminarProducto(item.id)}>×</button>
                 </div>
@@ -215,15 +201,15 @@ export default function Ordenes() {
 
           <div className="order-total">
             <span>Total</span>
-            <strong>Q{total}</strong>
+            <strong>Q{total.toFixed(2)}</strong>
           </div>
 
           <button
             className="create-order-btn"
-            onClick={crearOrden}
-            disabled={items.length === 0}
+            onClick={crearOrdenHandler}
+            disabled={items.length === 0 || loading}
           >
-            Crear orden pendiente
+            {loading ? "Creando..." : "Crear orden pendiente"}
           </button>
         </div>
       </section>

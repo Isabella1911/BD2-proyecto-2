@@ -1,70 +1,63 @@
-import { useState } from "react";
-
-const dataMock = [
-  {
-    id: 1,
-    sucursal: "Sucursal Central",
-    productos: [
-      { nombre: "Corte de carne", cantidad: 20 },
-      { nombre: "Papas", cantidad: 50 },
-      { nombre: "Leche", cantidad: 80 },
-    ],
-  },
-  {
-    id: 2,
-    sucursal: "Sucursal Norte",
-    productos: [
-      { nombre: "Pollo", cantidad: 35 },
-      { nombre: "Tomates", cantidad: 42 },
-      { nombre: "Queso", cantidad: 28 },
-    ],
-  },
-  {
-    id: 3,
-    sucursal: "Sucursal Sur",
-    productos: [
-      { nombre: "Agua pura", cantidad: 100 },
-      { nombre: "Jugos", cantidad: 44 },
-      { nombre: "Detergente", cantidad: 32 },
-    ],
-  },
-];
+import { useEffect, useState } from "react";
+import { getSupermercados, getInventarioSupermercado } from "../../services/api";
 
 export default function ProductosPorSucursal() {
-  const [sucursalId, setSucursalId] = useState(dataMock[0].id);
+  const [sucursales, setSucursales] = useState([]);
+  const [sucursalId, setSucursalId] = useState("");
+  const [productos, setProductos] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const sucursalSeleccionada = dataMock.find((s) => s.id === Number(sucursalId));
+  useEffect(() => {
+    getSupermercados()
+      .then((data) => {
+        setSucursales(data);
+        if (data.length > 0) setSucursalId(data[0].id);
+      })
+      .catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    if (!sucursalId) return;
+    setLoading(true);
+    getInventarioSupermercado(sucursalId)
+      .then(setProductos)
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [sucursalId]);
 
   return (
     <div className="section-panel gerente-panel">
       <p className="eyebrow">Inventario general</p>
       <h2>Productos por sucursal</h2>
 
-      {/* BACKEND FUTURO:
-        GET /api/sucursales
-        GET /api/sucursales/:id/productos
-      */}
-
       <select
         className="gerente-select"
         value={sucursalId}
         onChange={(e) => setSucursalId(e.target.value)}
       >
-        {dataMock.map((sucursal) => (
-          <option key={sucursal.id} value={sucursal.id}>
-            {sucursal.sucursal}
+        {sucursales.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.nombre}
           </option>
         ))}
       </select>
 
-      <div className="data-list">
-        {sucursalSeleccionada.productos.map((producto) => (
-          <p key={producto.nombre}>
-            <strong>{producto.nombre}</strong>
-            <span>{producto.cantidad} unidades</span>
-          </p>
-        ))}
-      </div>
+      {loading ? (
+        <p className="muted">Cargando productos...</p>
+      ) : (
+        <div className="data-list">
+          {productos.length === 0 ? (
+            <p className="muted">No hay productos en esta sucursal.</p>
+          ) : (
+            productos.map((p) => (
+              <p key={p.id}>
+                <strong>{p.nombre}</strong>
+                <span>{p.cantidad} unidades — {p.categoria}</span>
+              </p>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }

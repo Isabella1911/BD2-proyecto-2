@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from neo4j import Session
-from database import get_db
+from database import get_db, node_to_dict, serialize
 from models import AlmacenCreate, AlmacenUpdate, BulkPropertyUpdate, BulkPropertyDelete
 import uuid
 
@@ -43,7 +43,7 @@ def listar_almacenes(activo: bool = None, lugar: str = None, db: Session = Depen
         params["lugar"] = lugar
     where = ("WHERE " + " AND ".join(filters)) if filters else ""
     result = db.run(f"MATCH (a:Almacen) {where} RETURN a ORDER BY a.nombre", **params)
-    return [dict(r["a"]) for r in result]
+    return [node_to_dict(r["a"]) for r in result]
 
 
 @router.get("/agregados")
@@ -67,7 +67,7 @@ def obtener_almacen(aid: str, db: Session = Depends(get_db)):
     record = result.single()
     if not record:
         raise HTTPException(status_code=404, detail="Almacén no encontrado")
-    return dict(record["a"])
+    return node_to_dict(record["a"])
 
 
 @router.get("/{aid}/productos")
@@ -87,7 +87,7 @@ def productos_en_almacen(aid: str, categoria: str = None, db: Session = Depends(
         **params,
     )
     return [
-        {**dict(r["p"]), "cantidad": r["cantidad"],
+        {**node_to_dict(r["p"]), "cantidad": r["cantidad"],
          "ubicacion": r["ubicacion"], "fecha_ingreso": r["fecha_ingreso"]}
         for r in result
     ]
@@ -109,7 +109,7 @@ def ordenes_del_almacen(aid: str, estado: str = None, db: Session = Depends(get_
         **params,
     )
     return [
-        {**dict(r["o"]), "fecha_despacho": r["fecha_despacho"],
+        {**node_to_dict(r["o"]), "fecha_despacho": r["fecha_despacho"],
          "prioridad": r["prioridad"], "encargado": r["encargado"]}
         for r in result
     ]
@@ -136,7 +136,7 @@ def actualizar_almacen(aid: str, data: AlmacenUpdate, db: Session = Depends(get_
     record = result.single()
     if not record:
         raise HTTPException(status_code=404, detail="Almacén no encontrado")
-    return dict(record["a"])
+    return node_to_dict(record["a"])
 
 
 @router.patch("/bulk/propiedades")

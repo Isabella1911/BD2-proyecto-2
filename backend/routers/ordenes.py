@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from neo4j import Session
-from database import get_db
+from database import get_db, node_to_dict, serialize
 from models import OrdenCreate, OrdenUpdate, BulkPropertyUpdate, BulkPropertyDelete
 from datetime import datetime
 import uuid
@@ -127,7 +127,7 @@ def listar_ordenes(
         f"MATCH (o:Orden) {where} RETURN o ORDER BY o.fecha DESC",
         **params
     )
-    return [dict(r["o"]) for r in result]
+    return [node_to_dict(r["o"]) for r in result]
 
 
 @router.get("/agregados")
@@ -151,7 +151,7 @@ def obtener_orden(oid: str, db: Session = Depends(get_db)):
     record = result.single()
     if not record:
         raise HTTPException(status_code=404, detail="Orden no encontrada")
-    return dict(record["o"])
+    return node_to_dict(record["o"])
 
 
 @router.get("/{oid}/detalle")
@@ -181,7 +181,7 @@ def detalle_orden(oid: str, db: Session = Depends(get_db)):
     return {
         "orden": dict(orden["o"]),
         "items": [
-            {**dict(r["p"]), "cantidad": r["cantidad"],
+            {**node_to_dict(r["p"]), "cantidad": r["cantidad"],
              "precio_unitario": r["precio_unitario"], "subtotal": r["subtotal"]}
             for r in items
         ],
@@ -208,7 +208,7 @@ def actualizar_orden(oid: str, data: OrdenUpdate, db: Session = Depends(get_db))
     record = result.single()
     if not record:
         raise HTTPException(status_code=404, detail="Orden no encontrada")
-    return dict(record["o"])
+    return node_to_dict(record["o"])
 
 
 @router.patch("/bulk/propiedades")

@@ -10,10 +10,10 @@ export default function ManagerLayout({ user, onLogout }) {
   const [section, setSection] = useState("inicio");
 
   const renderPage = () => {
-    if (section === "inventario") return <Inventario />;
-    if (section === "ordenes") return <Ordenes />;
-    if (section === "transporte") return <Transporte />;
-    if (section === "historial") return <Historial />;
+    if (section === "ordenes") return <Ordenes user={user} />;
+    if (section === "inventario") return <Inventario user={user} />;
+    if (section === "transporte") return <Transporte user={user} />;
+    if (section === "historial") return <Historial user={user} />;
     return <ManagerHome user={user} />;
   };
 
