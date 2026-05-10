@@ -3,6 +3,9 @@ import GerenteHome from "./GerenteHome";
 import HistorialGlobal from "./HistorialGlobal";
 import SucursalesActivas from "./SucursalesActivas";
 import ProductosPorSucursal from "./ProductosPorSucursal";
+import AdminNodos from "./AdminNodos";
+import GestionRelaciones from "./GestionRelaciones";
+import Reportes from "./Reportes";
 
 export default function GerenteLayout({ user, onLogout }) {
   const [section, setSection] = useState("inicio");
@@ -11,6 +14,9 @@ export default function GerenteLayout({ user, onLogout }) {
     if (section === "historial") return <HistorialGlobal />;
     if (section === "sucursales") return <SucursalesActivas />;
     if (section === "productos") return <ProductosPorSucursal />;
+    if (section === "nodos") return <AdminNodos />;
+    if (section === "relaciones") return <GestionRelaciones />;
+    if (section === "reportes") return <Reportes />;
     return <GerenteHome user={user} />;
   };
 
@@ -47,6 +53,27 @@ export default function GerenteLayout({ user, onLogout }) {
           >
             Productos por sucursal
           </button>
+
+          <button
+            className={section === "nodos" ? "active" : ""}
+            onClick={() => setSection("nodos")}
+          >
+            Gestión de Nodos
+          </button>
+
+          <button
+            className={section === "relaciones" ? "active" : ""}
+            onClick={() => setSection("relaciones")}
+          >
+            Gestión de Relaciones
+          </button>
+
+          <button
+            className={section === "reportes" ? "active" : ""}
+            onClick={() => setSection("reportes")}
+          >
+            Reportes
+          </button>
         </aside>
 
         <section className="manager-main">
@@ -58,9 +85,6 @@ export default function GerenteLayout({ user, onLogout }) {
 
             <div className="logo-box">
               <span>Logo</span>
-              {/* Luego puedes usar:
-              <img src="/src/assets/logo.png" alt="Logo Super Mart" />
-              */}
             </div>
           </header>
 
