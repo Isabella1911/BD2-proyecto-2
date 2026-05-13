@@ -24,11 +24,29 @@ async function request(path, options = {}) {
     headers: { "Content-Type": "application/json" },
     ...options,
   });
+
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || `Error ${res.status}`);
+
+    let message = `Error ${res.status}`;
+
+    if (Array.isArray(err.detail)) {
+      message = err.detail
+        .map((e) => {
+          const loc = Array.isArray(e.loc) ? e.loc.join(".") : "";
+          return `${loc}: ${e.msg}`;
+        })
+        .join(" | ");
+    } else if (typeof err.detail === "string") {
+      message = err.detail;
+    } else if (err.message) {
+      message = err.message;
+    }
+
+    throw new Error(message);
   }
-  const data = await res.json();
+
+  const data = await res.json().catch(() => null);
   return sanitize(data);
 }
 

@@ -47,7 +47,7 @@ export default function Inventario({ user }) {
       <p className="eyebrow">Inventario</p>
       <h2>Productos por categoría</h2>
       <p className="muted">
-        Inventario real de la sucursal seleccionada desde Neo4j.
+        Inventario
       </p>
 
       <div style={{ marginBottom: "1rem" }}>

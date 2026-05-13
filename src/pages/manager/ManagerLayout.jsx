@@ -5,6 +5,7 @@ import Inventario from "./Inventario";
 import Ordenes from "./Ordenes";
 import Transporte from "./Transporte";
 import Historial from "./Historial";
+import logo from "../../assets/logo.png";
 
 export default function ManagerLayout({ user, onLogout }) {
   const [section, setSection] = useState("inicio");
@@ -30,10 +31,7 @@ export default function ManagerLayout({ user, onLogout }) {
             </div>
 
             <div className="logo-box">
-              <span>Logo</span>
-              {/* Cuando tengas tu logo:
               <img src="/src/assets/logo.png" alt="Logo Super Mart" />
-              */}
             </div>
           </header>
 
