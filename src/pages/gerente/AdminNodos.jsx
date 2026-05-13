@@ -81,31 +81,28 @@ const NODO_CONFIG = {
     ],
   },
 
-  
-
   Almacen: {
-  listar: (f) => getAlmacenes(f),
-  crear1Label: (b) => crearAlmacen(b),
-  crear2Labels: null,
-  actualizar: (id, b) => actualizarAlmacen(id, b),
-  eliminar: (id) => eliminarAlmacen(id),
-  eliminarBulk: (ids) => eliminarAlmacenesBulk(ids),
-  actualizarBulk: (ids, p) => actualizarPropiedadesAlmacenesBulk(ids, p),
-  agregarBulk: (ids, p) => agregarPropiedadesAlmacenesBulk(ids, p),
-  eliminarPropsBulk: (ids, k) => eliminarPropiedadesAlmacenesBulk(ids, k),
-  campos: [
-    { key: "nombre", label: "Nombre", type: "text" },
-    { key: "lugar", label: "Lugar", type: "text" },
-    { key: "capacidad", label: "Capacidad", type: "number" },
-    { key: "tipos", label: "Tipos", type: "text" },
-    { key: "fecha_apertura", label: "Fecha de apertura", type: "date" },
-    { key: "activo", label: "Activo", type: "boolean" },
-  ],
-  filtros: [
-    { key: "lugar", label: "Lugar", type: "text" },
-  ],
-},
-
+    listar: (f) => getAlmacenes(f),
+    crear1Label: (b) => crearAlmacen(b),
+    crear2Labels: null,
+    actualizar: (id, b) => actualizarAlmacen(id, b),
+    eliminar: (id) => eliminarAlmacen(id),
+    eliminarBulk: (ids) => eliminarAlmacenesBulk(ids),
+    actualizarBulk: (ids, p) => actualizarPropiedadesAlmacenesBulk(ids, p),
+    agregarBulk: (ids, p) => agregarPropiedadesAlmacenesBulk(ids, p),
+    eliminarPropsBulk: (ids, k) => eliminarPropiedadesAlmacenesBulk(ids, k),
+    campos: [
+      { key: "nombre", label: "Nombre", type: "text" },
+      { key: "lugar", label: "Lugar", type: "text" },
+      { key: "capacidad", label: "Capacidad", type: "number" },
+      { key: "tipos", label: "Tipos", type: "text" },
+      { key: "fecha_apertura", label: "Fecha de apertura", type: "date" },
+      { key: "activo", label: "Activo", type: "boolean" },
+    ],
+    filtros: [
+      { key: "lugar", label: "Lugar", type: "text" },
+    ],
+  },
 
   Supermercado: {
     listar: (f) => getSupermercados(f),
@@ -150,6 +147,51 @@ const NODO_CONFIG = {
       { key: "transporte", label: "Tipo", type: "text" },
     ],
   },
+
+  Producto: {
+    listar: (f) => getProductos(f),
+    crear1Label: (b) => crearProducto(b),
+    crear2Labels: null,
+    actualizar: (id, b) => actualizarProducto(id, b),
+    eliminar: (id) => eliminarProducto(id),
+    eliminarBulk: (ids) => eliminarProductosBulk(ids),
+    actualizarBulk: (ids, p) => actualizarPropiedadesProductosBulk(ids, p),
+    agregarBulk: (ids, p) => agregarPropiedadesProductosBulk(ids, p),
+    eliminarPropsBulk: (ids, k) => eliminarPropiedadesProductosBulk(ids, k),
+    campos: [
+      { key: "nombre", label: "Nombre", type: "text" },
+      { key: "precio", label: "Precio", type: "number" },
+      { key: "peso", label: "Peso", type: "number" },
+      { key: "categoria", label: "Categoría", type: "text" },
+      { key: "fecha", label: "Fecha", type: "date" },
+      { key: "disponible", label: "Disponible", type: "boolean" },
+    ],
+    filtros: [
+      { key: "categoria", label: "Categoría", type: "text" },
+    ],
+  },
+
+  Orden: {
+    listar: (f) => getOrdenes(f),
+    crear1Label: (b) => crearOrden(b),
+    crear2Labels: null,
+    actualizar: (id, b) => actualizarOrden(id, b),
+    eliminar: (id) => eliminarOrden(id),
+    eliminarBulk: (ids) => eliminarOrdenesBulk(ids),
+    actualizarBulk: (ids, p) => actualizarPropiedadesOrdenesBulk(ids, p),
+    agregarBulk: (ids, p) => agregarPropiedadesOrdenesBulk(ids, p),
+    eliminarPropsBulk: (ids, k) => eliminarPropiedadesOrdenesBulk(ids, k),
+    campos: [
+      { key: "estado", label: "Estado", type: "select", options: ["Pendiente", "En proceso", "Completada", "Cancelada"] },
+      { key: "urgencia", label: "Urgencia", type: "select", options: ["Normal", "Alta", "Crítica"] },
+      { key: "total", label: "Total", type: "number" },
+      { key: "fecha", label: "Fecha", type: "date" },
+    ],
+    filtros: [
+      { key: "estado", label: "Estado", type: "select", options: ["", "Pendiente", "En proceso", "Completada", "Cancelada"] },
+      { key: "urgencia", label: "Urgencia", type: "select", options: ["", "Normal", "Alta", "Crítica"] },
+    ],
+  },
 };
 
 // ─── Componente principal ─────────────────────────────────────────────────────
@@ -162,8 +204,13 @@ export default function AdminNodos() {
   const [filtros, setFiltros] = useState({});
   const [msg, setMsg] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // Para edición — editNodo es el nodo actualmente en edición,
+  // editIndex es el índice dentro de los nodos seleccionados
   const [editNodo, setEditNodo] = useState(null);
   const [editForm, setEditForm] = useState({});
+  const [editIndex, setEditIndex] = useState(0);
+
   const [bulkPropKey, setBulkPropKey] = useState("");
   const [bulkPropVal, setBulkPropVal] = useState("");
   const [bulkPropKeys, setBulkPropKeys] = useState("");
@@ -176,6 +223,19 @@ export default function AdminNodos() {
     setTimeout(() => setMsg(null), 3500);
   };
 
+  // ── Nodos seleccionados con sus datos completos ───────────────────────────
+  // Filtramos la lista de nodos cargados por los ids seleccionados
+  const nodosEnEdicion = nodos.filter((n) => seleccionados.includes(n.id));
+
+  // ── Helpers de formulario ─────────────────────────────────────────────────
+  const buildFormFromNodo = (nodo) => {
+    const f = {};
+    cfg.campos.forEach((c) => {
+      f[c.key] = nodo[c.key] !== undefined ? String(nodo[c.key]) : "";
+    });
+    return f;
+  };
+
   const buildBodyFromForm = (sourceForm) => {
     const body = {};
 
@@ -183,7 +243,9 @@ export default function AdminNodos() {
       let value = sourceForm[c.key];
 
       if (c.type === "boolean") {
-        body[c.key] = value === undefined ? true : value === "true" || value === true;
+        body[c.key] = value === undefined
+          ? true
+          : value === "true" || value === true;
         return;
       }
 
@@ -217,25 +279,22 @@ export default function AdminNodos() {
     if (tipoNodo === "Producto" && !body.fecha) {
       body.fecha = new Date().toISOString().slice(0, 10);
     }
-
     if (tipoNodo === "Usuario" && !body.rol) {
       body.rol = "Manager";
     }
-
     if (tipoNodo === "Orden" && !body.estado) {
       body.estado = "Pendiente";
     }
-
     if (tipoNodo === "Orden" && !body.urgencia) {
       body.urgencia = "Normal";
     }
     if (tipoNodo === "Almacen" && !body.fecha_apertura) {
       body.fecha_apertura = new Date().toISOString().slice(0, 10);
     }
-
     if (tipoNodo === "Almacen" && !body.tipos) {
       body.tipos = "General";
     }
+
     return body;
   };
 
@@ -265,9 +324,7 @@ export default function AdminNodos() {
 
     try {
       const body = buildBodyFromForm(form);
-
       await cfg.crear1Label(body);
-
       flash(`✓ ${tipoNodo} creado correctamente`);
       setForm({});
     } catch (e) {
@@ -288,17 +345,51 @@ export default function AdminNodos() {
 
     try {
       const body = buildBodyFromForm(editForm);
-
       await cfg.actualizar(editNodo.id, body);
-
       flash("✓ Nodo actualizado");
-      setEditNodo(null);
-      setEditForm({});
+
+      // Actualizar el nodo en la lista local también
+      setNodos((prev) =>
+        prev.map((n) => (n.id === editNodo.id ? { ...n, ...body } : n))
+      );
     } catch (e) {
       flash(e.message, false);
     } finally {
       setLoading(false);
     }
+  };
+
+  // ── Navegar entre nodos seleccionados en edición ──────────────────────────
+  const irANodoEdicion = (index) => {
+    const nodo = nodosEnEdicion[index];
+    if (!nodo) return;
+    setEditIndex(index);
+    setEditNodo(nodo);
+    setEditForm(buildFormFromNodo(nodo));
+  };
+
+  // ── Abrir edición desde botón en tabla (solo ese nodo) ────────────────────
+  // Selecciona el nodo clicado (si no estaba seleccionado, lo agrega a seleccionados
+  // y va a la pestaña de editar apuntando a él)
+  const abrirEdicion = (nodo) => {
+    // Asegurar que el nodo esté en seleccionados
+    setSeleccionados((prev) =>
+      prev.includes(nodo.id) ? prev : [...prev, nodo.id]
+    );
+
+    // Calcular el índice dentro de nodosEnEdicion DESPUÉS de agregar el nodo
+    // Como el estado aún no se actualizó, calculamos manualmente
+    const nuevosSeleccionados = seleccionados.includes(nodo.id)
+      ? seleccionados
+      : [...seleccionados, nodo.id];
+
+    const nodosConDatos = nodos.filter((n) => nuevosSeleccionados.includes(n.id));
+    const idx = nodosConDatos.findIndex((n) => n.id === nodo.id);
+
+    setEditIndex(idx >= 0 ? idx : 0);
+    setEditNodo(nodo);
+    setEditForm(buildFormFromNodo(nodo));
+    setSubTab("editar");
   };
 
   // ── Eliminar 1 nodo ───────────────────────────────────────────────────────
@@ -309,9 +400,9 @@ export default function AdminNodos() {
 
     try {
       await cfg.eliminar(id);
-
       flash("✓ Nodo eliminado");
       setNodos((prev) => prev.filter((n) => n.id !== id));
+      setSeleccionados((prev) => prev.filter((x) => x !== id));
     } catch (e) {
       flash(e.message, false);
     } finally {
@@ -338,7 +429,6 @@ export default function AdminNodos() {
         }
 
         await cfg.eliminarBulk(ids);
-
         flash(`✓ ${ids.length} nodo(s) eliminados`);
         setNodos((prev) => prev.filter((n) => !ids.includes(n.id)));
         setSeleccionados([]);
@@ -372,7 +462,6 @@ export default function AdminNodos() {
           .filter(Boolean);
 
         await cfg.eliminarPropsBulk(ids, property_keys);
-
         flash(`✓ Propiedades eliminadas de ${ids.length} nodo(s)`);
       }
     } catch (e) {
@@ -396,19 +485,24 @@ export default function AdminNodos() {
     }
   };
 
-  const abrirEdicion = (nodo) => {
-    setEditNodo(nodo);
+  // ── Ir a pestaña de editar desde Listar (con los seleccionados) ───────────
+  const irAEditarSeleccionados = () => {
+    if (seleccionados.length === 0) {
+      flash("Selecciona al menos un nodo para editar", false);
+      return;
+    }
 
-    const f = {};
+    const primero = nodosEnEdicion[0];
+    if (primero) {
+      setEditIndex(0);
+      setEditNodo(primero);
+      setEditForm(buildFormFromNodo(primero));
+    }
 
-    cfg.campos.forEach((c) => {
-      f[c.key] = nodo[c.key] !== undefined ? String(nodo[c.key]) : "";
-    });
-
-    setEditForm(f);
     setSubTab("editar");
   };
 
+  // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="admin-nodos">
       {msg && (
@@ -427,6 +521,7 @@ export default function AdminNodos() {
               setNodos([]);
               setSeleccionados([]);
               setEditNodo(null);
+              setEditIndex(0);
               setForm({});
               setFiltros({});
               setSubTab("crear");
@@ -442,13 +537,23 @@ export default function AdminNodos() {
           <button
             key={t}
             className={subTab === t ? "active" : ""}
-            onClick={() => setSubTab(t)}
+            onClick={() => {
+              // Al ir a editar manualmente desde la tab, cargar el primero seleccionado
+              if (t === "editar" && nodosEnEdicion.length > 0 && !editNodo) {
+                const primero = nodosEnEdicion[0];
+                setEditIndex(0);
+                setEditNodo(primero);
+                setEditForm(buildFormFromNodo(primero));
+              }
+              setSubTab(t);
+            }}
           >
             {t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
         ))}
       </div>
 
+      {/* ── CREAR ─────────────────────────────────────────────────────────── */}
       {subTab === "crear" && (
         <div className="an-panel">
           <h3>Crear {tipoNodo}</h3>
@@ -493,6 +598,7 @@ export default function AdminNodos() {
         </div>
       )}
 
+      {/* ── LISTAR ────────────────────────────────────────────────────────── */}
       {subTab === "listar" && (
         <div className="an-panel">
           <h3>Listar y filtrar {tipoNodo}s</h3>
@@ -531,6 +637,18 @@ export default function AdminNodos() {
 
           {nodos.length > 0 && (
             <div className="an-table-wrap">
+              {/* Botón para editar los seleccionados */}
+              {seleccionados.length > 0 && (
+                <div style={{ marginBottom: 10 }}>
+                  <button
+                    className="an-btn-primary"
+                    onClick={irAEditarSeleccionados}
+                  >
+                    ✏️ Editar {seleccionados.length} seleccionado(s)
+                  </button>
+                </div>
+              )}
+
               <table className="an-table">
                 <thead>
                   <tr>
@@ -595,74 +713,157 @@ export default function AdminNodos() {
         </div>
       )}
 
+      {/* ── EDITAR ────────────────────────────────────────────────────────── */}
       {subTab === "editar" && (
         <div className="an-panel">
           <h3>Editar {tipoNodo}</h3>
 
-          {!editNodo ? (
+          {nodosEnEdicion.length === 0 ? (
             <p className="an-empty">
-              Ve a <strong>Listar</strong>, busca los nodos y haz clic en{" "}
-              <strong>Editar</strong> sobre uno.
+              Ve a <strong>Listar</strong>, busca los nodos, selecciona uno o varios con el
+              checkbox y haz clic en <strong>Editar</strong>.
             </p>
           ) : (
             <>
-              <p className="an-id-label">
-                Editando: <code>{editNodo.id}</code>
-              </p>
-
-              {cfg.campos.map((c) => (
-                <div key={c.key} className="an-field">
-                  <label>{c.label}</label>
-
-                  {c.type === "boolean" ? (
-                    <select
-                      value={editForm[c.key] ?? "true"}
-                      onChange={(e) => setEditForm({ ...editForm, [c.key]: e.target.value })}
-                    >
-                      <option value="true">Sí</option>
-                      <option value="false">No</option>
-                    </select>
-                  ) : c.type === "select" ? (
-                    <select
-                      value={editForm[c.key] ?? ""}
-                      onChange={(e) => setEditForm({ ...editForm, [c.key]: e.target.value })}
-                    >
-                      {c.options.map((o) => (
-                        <option key={o} value={o}>
-                          {o}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      type={c.type}
-                      value={editForm[c.key] ?? ""}
-                      onChange={(e) => setEditForm({ ...editForm, [c.key]: e.target.value })}
-                    />
-                  )}
-                </div>
-              ))}
-
-              <div style={{ display: "flex", gap: 10 }}>
-                <button className="an-btn-primary" onClick={handleEditar} disabled={loading}>
-                  {loading ? "Guardando..." : "Guardar cambios"}
-                </button>
-
-                <button
-                  className="an-btn-secondary"
-                  onClick={() => {
-                    setEditNodo(null);
-                    setEditForm({});
+              {/* Navegación entre nodos seleccionados */}
+              {nodosEnEdicion.length > 1 && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    marginBottom: 16,
+                    flexWrap: "wrap",
                   }}
                 >
-                  Cancelar
-                </button>
-              </div>
+                  <span className="an-hint" style={{ margin: 0 }}>
+                    Nodo {editIndex + 1} de {nodosEnEdicion.length} seleccionados
+                  </span>
+
+                  <button
+                    className="an-btn-secondary"
+                    onClick={() => irANodoEdicion(editIndex - 1)}
+                    disabled={editIndex === 0}
+                  >
+                    ← Anterior
+                  </button>
+
+                  <button
+                    className="an-btn-secondary"
+                    onClick={() => irANodoEdicion(editIndex + 1)}
+                    disabled={editIndex === nodosEnEdicion.length - 1}
+                  >
+                    Siguiente →
+                  </button>
+
+                  {/* Mini lista de seleccionados para saltar directamente */}
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {nodosEnEdicion.map((n, i) => (
+                      <button
+                        key={n.id}
+                        onClick={() => irANodoEdicion(i)}
+                        style={{
+                          padding: "2px 8px",
+                          borderRadius: 6,
+                          border: "1px solid #ccc",
+                          background: i === editIndex ? "#d94145" : "#f5f5f5",
+                          color: i === editIndex ? "white" : "#333",
+                          cursor: "pointer",
+                          fontSize: 12,
+                        }}
+                        title={n.id}
+                      >
+                        #{i + 1}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {editNodo && (
+                <>
+                  <p className="an-id-label">
+                    Editando: <code>{editNodo.id}</code>
+                  </p>
+
+                  {cfg.campos.map((c) => (
+                    <div key={c.key} className="an-field">
+                      <label>{c.label}</label>
+
+                      {c.type === "boolean" ? (
+                        <select
+                          value={editForm[c.key] ?? "true"}
+                          onChange={(e) =>
+                            setEditForm({ ...editForm, [c.key]: e.target.value })
+                          }
+                        >
+                          <option value="true">Sí</option>
+                          <option value="false">No</option>
+                        </select>
+                      ) : c.type === "select" ? (
+                        <select
+                          value={editForm[c.key] ?? ""}
+                          onChange={(e) =>
+                            setEditForm({ ...editForm, [c.key]: e.target.value })
+                          }
+                        >
+                          {c.options.map((o) => (
+                            <option key={o} value={o}>
+                              {o}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type={c.type}
+                          value={editForm[c.key] ?? ""}
+                          onChange={(e) =>
+                            setEditForm({ ...editForm, [c.key]: e.target.value })
+                          }
+                        />
+                      )}
+                    </div>
+                  ))}
+
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <button
+                      className="an-btn-primary"
+                      onClick={handleEditar}
+                      disabled={loading}
+                    >
+                      {loading ? "Guardando..." : "Guardar cambios"}
+                    </button>
+
+                    {/* Si hay más nodos, guardar y pasar al siguiente */}
+                    {nodosEnEdicion.length > 1 &&
+                      editIndex < nodosEnEdicion.length - 1 && (
+                        <button
+                          className="an-btn-secondary"
+                          onClick={async () => {
+                            await handleEditar();
+                            irANodoEdicion(editIndex + 1);
+                          }}
+                          disabled={loading}
+                        >
+                          Guardar y siguiente →
+                        </button>
+                      )}
+
+                    <button
+                      className="an-btn-secondary"
+                      onClick={() => setSubTab("listar")}
+                    >
+                      Volver a Listar
+                    </button>
+                  </div>
+                </>
+              )}
             </>
           )}
         </div>
       )}
 
+      {/* ── ELIMINAR ──────────────────────────────────────────────────────── */}
       {subTab === "eliminar" && (
         <div className="an-panel">
           <h3>Eliminar {tipoNodo}</h3>
@@ -679,6 +880,7 @@ export default function AdminNodos() {
         </div>
       )}
 
+      {/* ── BULK ──────────────────────────────────────────────────────────── */}
       {subTab === "bulk" && (
         <div className="an-panel">
           <h3>Operaciones masivas en {tipoNodo}s</h3>

@@ -261,7 +261,10 @@ export default function GestionRelaciones() {
     try {
       const body = { ...form };
       cfg.campos.forEach((c) => {
-        if (c.type === "boolean") body[c.key] = body[c.key] === "true" || body[c.key] === true;
+        if (c.type === "boolean") {
+          const val = body[c.key] ?? "true";
+          body[c.key] = val === "true" || val === true;
+        }
         if (c.type === "number" && body[c.key] !== undefined) body[c.key] = parseFloat(body[c.key]);
       });
       await cfg.crear(body);
