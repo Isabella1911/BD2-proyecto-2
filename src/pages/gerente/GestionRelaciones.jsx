@@ -12,6 +12,7 @@ import {
   crearDespacha, actualizarDespacha, eliminarDespacha, eliminarDespachaBulk,
   crearDistribuye, actualizarDistribuye, eliminarDistribuye, eliminarDistribuyeBulk,
   agregarPropiedadesRelacion,
+  eliminarPropiedadesRelacion,
   getConectadosRelacion,
 } from "../../services/api";
 
@@ -32,8 +33,7 @@ const REL_CONFIG = {
       { key: "activo", label: "Activo", type: "boolean" },
     ],
     propiedades: ["rol_en_sucursal", "fecha_inicio", "activo"],
-    // Para el selector visual en bulk:
-    fuenteSource: "usuarios",       // qué lista cargar como fuente
+    fuenteSource: "usuarios",
     fuenteLabel: (n) => `${n.nombre} (${n.rol})`,
     destinoLabel: (n) => `${n.nombre}${n.extra ? ` — ${n.extra}` : ""}`,
   },
@@ -238,13 +238,14 @@ export default function GestionRelaciones() {
   const [fuentes, setFuentes] = useState({});
   const [fuentesCargadas, setFuentesCargadas] = useState({});
 
-  // Bulk — acción
+  // Bulk — acción y campos relacionados
   const [bulkAccion, setBulkAccion] = useState("actualizar");
   const [bulkPropKey, setBulkPropKey] = useState("");
   const [bulkPropVal, setBulkPropVal] = useState("");
   const [nuevasPropiedades, setNuevasPropiedades] = useState([{ key: "", value: "" }]);
+  const [eliminarPropKeys, setEliminarPropKeys] = useState("");
 
-  // Bulk — selector visual: nodo fuente seleccionado + destinos cargados + destinos seleccionados
+  // Bulk — selector visual fuente → destino
   const [bulkFuenteId, setBulkFuenteId] = useState("");
   const [destinos, setDestinos] = useState([]);
   const [destinosSeleccionados, setDestinosSeleccionados] = useState([]);
@@ -267,7 +268,6 @@ export default function GestionRelaciones() {
     } catch { /* silencioso */ }
   };
 
-  // Cuando se selecciona un nodo fuente en el bulk, cargar sus destinos
   const handleSeleccionarFuente = async (fuenteId) => {
     setBulkFuenteId(fuenteId);
     setDestinos([]);
@@ -284,19 +284,15 @@ export default function GestionRelaciones() {
     }
   };
 
-  const toggleDestino = (id) => {
+  const toggleDestino = (id) =>
     setDestinosSeleccionados((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
-  };
 
-  const toggleTodosDestinos = () => {
-    if (destinosSeleccionados.length === destinos.length) {
-      setDestinosSeleccionados([]);
-    } else {
-      setDestinosSeleccionados(destinos.map((d) => d.id));
-    }
-  };
+  const toggleTodosDestinos = () =>
+    setDestinosSeleccionados(
+      destinosSeleccionados.length === destinos.length ? [] : destinos.map((d) => d.id)
+    );
 
   // ── Crear ─────────────────────────────────────────────────────────────────
   const handleCrear = async () => {
@@ -308,9 +304,8 @@ export default function GestionRelaciones() {
           const val = body[c.key] ?? "true";
           body[c.key] = val === "true" || val === true;
         }
-        if (c.type === "number" && body[c.key] !== undefined) {
+        if (c.type === "number" && body[c.key] !== undefined)
           body[c.key] = parseFloat(body[c.key]);
-        }
       });
       await cfg.crear(body);
       flash(`✓ Relación ${tipoRel} creada`);
@@ -344,23 +339,27 @@ export default function GestionRelaciones() {
     setLoading(true);
     try {
       if (bulkAccion === "actualizar" && cfg.actualizar) {
-        if (!bulkPropKey) return flash("Selecciona la propiedad a actualizar", false);
+        if (!bulkPropKey) { flash("Selecciona la propiedad a actualizar", false); return; }
         await cfg.actualizar(ids, { [bulkPropKey]: bulkPropVal });
         flash(`✓ "${bulkPropKey}" actualizado en ${ids.length} relación(es)`);
 
       } else if (bulkAccion === "agregar") {
         const validas = nuevasPropiedades.filter((p) => p.key.trim() !== "");
-        if (validas.length === 0) return flash("Ingresa al menos una propiedad", false);
+        if (validas.length === 0) { flash("Ingresa al menos una propiedad", false); return; }
         const properties = Object.fromEntries(validas.map((p) => [p.key.trim(), p.value]));
         await agregarPropiedadesRelacion(tipoRel, ids, properties);
         flash(`✓ ${validas.length} propiedad(es) agregada(s) a ${ids.length} relación(es)`);
         setNuevasPropiedades([{ key: "", value: "" }]);
 
+      } else if (bulkAccion === "eliminar-props") {
+        const keys = eliminarPropKeys.split(",").map((k) => k.trim()).filter(Boolean);
+        if (keys.length === 0) { flash("Ingresa al menos una propiedad a eliminar", false); return; }
+        await eliminarPropiedadesRelacion(tipoRel, ids, keys);
+        flash(`✓ Propiedad(es) [${keys.join(", ")}] eliminada(s) de ${ids.length} relación(es)`);
+        setEliminarPropKeys("");
+
       } else if (bulkAccion === "eliminar" && cfg.eliminarBulk) {
-        if (!confirm(`¿Eliminar ${ids.length} relación(es)? Esta acción no se puede deshacer.`)) {
-          setLoading(false);
-          return;
-        }
+        if (!confirm(`¿Eliminar ${ids.length} relación(es) completa(s)? Esta acción no se puede deshacer.`)) return;
         await cfg.eliminarBulk(ids);
         flash(`✓ ${ids.length} relación(es) eliminada(s)`);
         setDestinosSeleccionados([]);
@@ -374,14 +373,10 @@ export default function GestionRelaciones() {
     }
   };
 
-  const agregarFilaProp = () =>
-    setNuevasPropiedades((prev) => [...prev, { key: "", value: "" }]);
-  const eliminarFilaProp = (i) =>
-    setNuevasPropiedades((prev) => prev.filter((_, idx) => idx !== i));
+  const agregarFilaProp = () => setNuevasPropiedades((p) => [...p, { key: "", value: "" }]);
+  const eliminarFilaProp = (i) => setNuevasPropiedades((p) => p.filter((_, idx) => idx !== i));
   const actualizarFilaProp = (i, campo, valor) =>
-    setNuevasPropiedades((prev) =>
-      prev.map((p, idx) => (idx === i ? { ...p, [campo]: valor } : p))
-    );
+    setNuevasPropiedades((p) => p.map((x, idx) => (idx === i ? { ...x, [campo]: valor } : x)));
 
   const resetTipo = (r) => {
     setTipoRel(r);
@@ -391,25 +386,19 @@ export default function GestionRelaciones() {
     setDestinos([]);
     setDestinosSeleccionados([]);
     setNuevasPropiedades([{ key: "", value: "" }]);
+    setEliminarPropKeys("");
   };
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="admin-nodos">
       {msg && (
-        <div className={`flash-msg ${msg.ok ? "flash-ok" : "flash-err"}`}>
-          {msg.text}
-        </div>
+        <div className={`flash-msg ${msg.ok ? "flash-ok" : "flash-err"}`}>{msg.text}</div>
       )}
 
-      {/* Selector tipo de relación */}
       <div className="an-tipo-selector" style={{ flexWrap: "wrap" }}>
         {Object.keys(REL_CONFIG).map((r) => (
-          <button
-            key={r}
-            className={tipoRel === r ? "active" : ""}
-            onClick={() => resetTipo(r)}
-          >
+          <button key={r} className={tipoRel === r ? "active" : ""} onClick={() => resetTipo(r)}>
             {r}
           </button>
         ))}
@@ -417,7 +406,6 @@ export default function GestionRelaciones() {
 
       <p className="an-hint" style={{ marginTop: 6 }}>{cfg.descripcion}</p>
 
-      {/* Sub-tabs */}
       <div className="an-subtabs">
         {["crear", "editar", "eliminar", "bulk"].map((t) => (
           <button key={t} className={subTab === t ? "active" : ""} onClick={() => setSubTab(t)}>
@@ -431,48 +419,35 @@ export default function GestionRelaciones() {
         <div className="an-panel">
           <h3>Crear relación {tipoRel}</h3>
           <p className="an-hint">Los campos con selector cargan nodos de la BD al hacer clic.</p>
-
           {cfg.campos.map((c) => (
             <div key={c.key} className="an-field">
               <label>{c.label}</label>
               {c.source ? (
-                <select
-                  value={form[c.key] ?? ""}
-                  onFocus={() => cargarFuente(c.source)}
-                  onChange={(e) => setForm({ ...form, [c.key]: e.target.value })}
-                >
+                <select value={form[c.key] ?? ""} onFocus={() => cargarFuente(c.source)}
+                  onChange={(e) => setForm({ ...form, [c.key]: e.target.value })}>
                   <option value="">— clic para cargar {c.source} —</option>
                   {(fuentes[c.source] ?? []).map((n) => (
                     <option key={n.id} value={n.id}>{NombreFuente(n, c.source)}</option>
                   ))}
                 </select>
               ) : c.type === "boolean" ? (
-                <select
-                  value={form[c.key] ?? "true"}
-                  onChange={(e) => setForm({ ...form, [c.key]: e.target.value })}
-                >
+                <select value={form[c.key] ?? "true"}
+                  onChange={(e) => setForm({ ...form, [c.key]: e.target.value })}>
                   <option value="true">Sí</option>
                   <option value="false">No</option>
                 </select>
               ) : c.type === "select" ? (
-                <select
-                  value={form[c.key] ?? ""}
-                  onChange={(e) => setForm({ ...form, [c.key]: e.target.value })}
-                >
+                <select value={form[c.key] ?? ""}
+                  onChange={(e) => setForm({ ...form, [c.key]: e.target.value })}>
                   <option value="">— selecciona —</option>
-                  {c.options.map((o) => (<option key={o} value={o}>{o}</option>))}
+                  {c.options.map((o) => <option key={o} value={o}>{o}</option>)}
                 </select>
               ) : (
-                <input
-                  type={c.type}
-                  placeholder={c.label}
-                  value={form[c.key] ?? ""}
-                  onChange={(e) => setForm({ ...form, [c.key]: e.target.value })}
-                />
+                <input type={c.type} placeholder={c.label} value={form[c.key] ?? ""}
+                  onChange={(e) => setForm({ ...form, [c.key]: e.target.value })} />
               )}
             </div>
           ))}
-
           <button className="an-btn-primary" onClick={handleCrear} disabled={loading}>
             {loading ? "Creando..." : `Crear ${tipoRel}`}
           </button>
@@ -492,45 +467,32 @@ export default function GestionRelaciones() {
                 <div key={c.key} className="an-field">
                   <label>{c.label}</label>
                   {c.source ? (
-                    <select
-                      value={form[c.key] ?? ""}
-                      onFocus={() => cargarFuente(c.source)}
-                      onChange={(e) => setForm({ ...form, [c.key]: e.target.value })}
-                    >
+                    <select value={form[c.key] ?? ""} onFocus={() => cargarFuente(c.source)}
+                      onChange={(e) => setForm({ ...form, [c.key]: e.target.value })}>
                       <option value="">— clic para cargar {c.source} —</option>
                       {(fuentes[c.source] ?? []).map((n) => (
                         <option key={n.id} value={n.id}>{NombreFuente(n, c.source)}</option>
                       ))}
                     </select>
                   ) : c.type === "boolean" ? (
-                    <select
-                      value={form[c.key] ?? "true"}
-                      onChange={(e) => setForm({ ...form, [c.key]: e.target.value })}
-                    >
+                    <select value={form[c.key] ?? "true"}
+                      onChange={(e) => setForm({ ...form, [c.key]: e.target.value })}>
                       <option value="true">Sí</option>
                       <option value="false">No</option>
                     </select>
                   ) : c.type === "select" ? (
-                    <select
-                      value={form[c.key] ?? ""}
-                      onChange={(e) => setForm({ ...form, [c.key]: e.target.value })}
-                    >
+                    <select value={form[c.key] ?? ""}
+                      onChange={(e) => setForm({ ...form, [c.key]: e.target.value })}>
                       <option value="">— selecciona —</option>
-                      {c.options.map((o) => (<option key={o} value={o}>{o}</option>))}
+                      {c.options.map((o) => <option key={o} value={o}>{o}</option>)}
                     </select>
                   ) : (
-                    <input
-                      type={c.type}
-                      placeholder={c.label}
-                      value={form[c.key] ?? ""}
-                      onChange={(e) => setForm({ ...form, [c.key]: e.target.value })}
-                    />
+                    <input type={c.type} placeholder={c.label} value={form[c.key] ?? ""}
+                      onChange={(e) => setForm({ ...form, [c.key]: e.target.value })} />
                   )}
                 </div>
               ))}
-              <button
-                className="an-btn-primary"
-                disabled={loading}
+              <button className="an-btn-primary" disabled={loading}
                 onClick={async () => {
                   setLoading(true);
                   try {
@@ -538,18 +500,12 @@ export default function GestionRelaciones() {
                     const propKeys = cfg.campos.filter((c) => !c.source).map((c) => c.key);
                     const ids = [form[idKeys[0]], form[idKeys[1]]].filter(Boolean);
                     const props = {};
-                    propKeys.forEach((k) => {
-                      if (form[k] !== undefined && form[k] !== "") props[k] = form[k];
-                    });
+                    propKeys.forEach((k) => { if (form[k] !== undefined && form[k] !== "") props[k] = form[k]; });
                     await cfg.actualizar(ids, props);
                     flash("✓ Relación actualizada");
-                  } catch (e) {
-                    flash(e.message, false);
-                  } finally {
-                    setLoading(false);
-                  }
-                }}
-              >
+                  } catch (e) { flash(e.message, false); }
+                  finally { setLoading(false); }
+                }}>
                 {loading ? "Guardando..." : "Actualizar relación"}
               </button>
             </>
@@ -569,11 +525,8 @@ export default function GestionRelaciones() {
               {cfg.campos.filter((c) => c.source).map((c) => (
                 <div key={c.key} className="an-field">
                   <label>{c.label}</label>
-                  <select
-                    value={form[c.key] ?? ""}
-                    onFocus={() => cargarFuente(c.source)}
-                    onChange={(e) => setForm({ ...form, [c.key]: e.target.value })}
-                  >
+                  <select value={form[c.key] ?? ""} onFocus={() => cargarFuente(c.source)}
+                    onChange={(e) => setForm({ ...form, [c.key]: e.target.value })}>
                     <option value="">— clic para cargar {c.source} —</option>
                     {(fuentes[c.source] ?? []).map((n) => (
                       <option key={n.id} value={n.id}>{NombreFuente(n, c.source)}</option>
@@ -594,16 +547,11 @@ export default function GestionRelaciones() {
         <div className="an-panel">
           <h3>Operaciones masivas en {tipoRel}</h3>
 
-          {/* PASO 1: Seleccionar nodo fuente */}
+          {/* PASO 1: Nodo fuente */}
           <div className="an-field">
-            <label>
-              1. Selecciona el nodo fuente ({cfg.fuenteSource})
-            </label>
-            <select
-              value={bulkFuenteId}
-              onFocus={() => cargarFuente(cfg.fuenteSource)}
-              onChange={(e) => handleSeleccionarFuente(e.target.value)}
-            >
+            <label>1. Selecciona el nodo fuente ({cfg.fuenteSource})</label>
+            <select value={bulkFuenteId} onFocus={() => cargarFuente(cfg.fuenteSource)}
+              onChange={(e) => handleSeleccionarFuente(e.target.value)}>
               <option value="">— clic para cargar {cfg.fuenteSource} —</option>
               {(fuentes[cfg.fuenteSource] ?? []).map((n) => (
                 <option key={n.id} value={n.id}>{cfg.fuenteLabel(n)}</option>
@@ -611,73 +559,33 @@ export default function GestionRelaciones() {
             </select>
           </div>
 
-          {/* PASO 2: Lista de destinos conectados con checkboxes */}
+          {/* PASO 2: Destinos conectados con checkboxes */}
           {bulkFuenteId && (
             <div style={{ marginBottom: 16 }}>
               <label style={{ fontWeight: 600, display: "block", marginBottom: 6 }}>
-                2. Selecciona los destinos conectados ({destinosSeleccionados.length} seleccionados)
+                2. Selecciona los destinos ({destinosSeleccionados.length} seleccionados)
               </label>
-
               {loadingDestinos ? (
                 <p className="an-hint">Cargando destinos...</p>
               ) : destinos.length === 0 ? (
                 <p className="an-hint">Este nodo no tiene relaciones {tipoRel} registradas.</p>
               ) : (
-                <div
-                  style={{
-                    border: "1px solid #e0e0e0",
-                    borderRadius: 8,
-                    maxHeight: 220,
-                    overflowY: "auto",
-                    padding: "4px 0",
-                  }}
-                >
-                  {/* Seleccionar todos */}
-                  <div
-                    style={{
-                      padding: "6px 12px",
-                      borderBottom: "1px solid #f0f0f0",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      background: "#fafafa",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      id="sel-todos"
+                <div style={{ border: "1px solid #e0e0e0", borderRadius: 8, maxHeight: 220, overflowY: "auto", padding: "4px 0" }}>
+                  <div style={{ padding: "6px 12px", borderBottom: "1px solid #f0f0f0", display: "flex", alignItems: "center", gap: 8, background: "#fafafa" }}>
+                    <input type="checkbox" id="sel-todos"
                       checked={destinosSeleccionados.length === destinos.length && destinos.length > 0}
-                      onChange={toggleTodosDestinos}
-                    />
+                      onChange={toggleTodosDestinos} />
                     <label htmlFor="sel-todos" style={{ cursor: "pointer", fontWeight: 600, fontSize: 13 }}>
                       Seleccionar todos ({destinos.length})
                     </label>
                   </div>
-
-                  {/* Filas de destinos */}
                   {destinos.map((d) => (
-                    <div
-                      key={d.id}
-                      style={{
-                        padding: "7px 12px",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 10,
-                        cursor: "pointer",
-                        background: destinosSeleccionados.includes(d.id) ? "#fff4f4" : "white",
-                        borderBottom: "1px solid #f5f5f5",
-                      }}
-                      onClick={() => toggleDestino(d.id)}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={destinosSeleccionados.includes(d.id)}
-                        onChange={() => toggleDestino(d.id)}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      <span style={{ flex: 1, fontSize: 14 }}>
-                        {cfg.destinoLabel(d)}
-                      </span>
+                    <div key={d.id}
+                      style={{ padding: "7px 12px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", background: destinosSeleccionados.includes(d.id) ? "#fff4f4" : "white", borderBottom: "1px solid #f5f5f5" }}
+                      onClick={() => toggleDestino(d.id)}>
+                      <input type="checkbox" checked={destinosSeleccionados.includes(d.id)}
+                        onChange={() => toggleDestino(d.id)} onClick={(e) => e.stopPropagation()} />
+                      <span style={{ flex: 1, fontSize: 14 }}>{cfg.destinoLabel(d)}</span>
                       <code style={{ fontSize: 11, color: "#999" }}>{d.id.slice(0, 8)}…</code>
                     </div>
                   ))}
@@ -686,15 +594,16 @@ export default function GestionRelaciones() {
             </div>
           )}
 
-          {/* PASO 3: Acción a ejecutar (solo si hay destinos seleccionados) */}
+          {/* PASO 3: Acción */}
           {destinosSeleccionados.length > 0 && (
             <>
               <div className="an-field">
-                <label>3. Acción a ejecutar sobre {destinosSeleccionados.length} relación(es)</label>
+                <label>3. Acción sobre {destinosSeleccionados.length} relación(es)</label>
                 <select value={bulkAccion} onChange={(e) => setBulkAccion(e.target.value)}>
                   {cfg.actualizar && <option value="actualizar">Actualizar propiedad existente</option>}
                   <option value="agregar">Agregar propiedad(es) nueva(s)</option>
-                  {cfg.eliminarBulk && <option value="eliminar">Eliminar relaciones</option>}
+                  <option value="eliminar-props">Eliminar propiedad(es)</option>
+                  {cfg.eliminarBulk && <option value="eliminar">Eliminar relaciones completas</option>}
                 </select>
               </div>
 
@@ -704,19 +613,13 @@ export default function GestionRelaciones() {
                     <label>Propiedad</label>
                     <select value={bulkPropKey} onChange={(e) => setBulkPropKey(e.target.value)}>
                       <option value="">— selecciona —</option>
-                      {cfg.propiedades.map((p) => (
-                        <option key={p} value={p}>{p}</option>
-                      ))}
+                      {cfg.propiedades.map((p) => <option key={p} value={p}>{p}</option>)}
                     </select>
                   </div>
                   <div className="an-field">
                     <label>Nuevo valor</label>
-                    <input
-                      type="text"
-                      placeholder="nuevo valor"
-                      value={bulkPropVal}
-                      onChange={(e) => setBulkPropVal(e.target.value)}
-                    />
+                    <input type="text" placeholder="nuevo valor" value={bulkPropVal}
+                      onChange={(e) => setBulkPropVal(e.target.value)} />
                   </div>
                 </>
               )}
@@ -724,27 +627,14 @@ export default function GestionRelaciones() {
               {bulkAccion === "agregar" && (
                 <div style={{ marginBottom: 12 }}>
                   <p className="an-hint" style={{ marginBottom: 8 }}>
-                    Se agregarán a las relaciones sin pisar valores existentes.
+                    Se agregarán sin pisar valores existentes.
                   </p>
                   {nuevasPropiedades.map((prop, i) => (
-                    <div
-                      key={i}
-                      style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center" }}
-                    >
-                      <input
-                        type="text"
-                        placeholder="nombre propiedad"
-                        value={prop.key}
-                        onChange={(e) => actualizarFilaProp(i, "key", e.target.value)}
-                        style={{ flex: 1 }}
-                      />
-                      <input
-                        type="text"
-                        placeholder="valor"
-                        value={prop.value}
-                        onChange={(e) => actualizarFilaProp(i, "value", e.target.value)}
-                        style={{ flex: 1 }}
-                      />
+                    <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center" }}>
+                      <input type="text" placeholder="nombre propiedad" value={prop.key}
+                        onChange={(e) => actualizarFilaProp(i, "key", e.target.value)} style={{ flex: 1 }} />
+                      <input type="text" placeholder="valor" value={prop.value}
+                        onChange={(e) => actualizarFilaProp(i, "value", e.target.value)} style={{ flex: 1 }} />
                       {nuevasPropiedades.length > 1 && (
                         <button className="an-btn-sm an-btn-danger" onClick={() => eliminarFilaProp(i)}>✕</button>
                       )}
@@ -756,19 +646,28 @@ export default function GestionRelaciones() {
                 </div>
               )}
 
+              {bulkAccion === "eliminar-props" && (
+                <div className="an-field">
+                  <label>Propiedades a eliminar (separadas por coma)</label>
+                  <input type="text" placeholder="ej. activo, rol_en_sucursal"
+                    value={eliminarPropKeys}
+                    onChange={(e) => setEliminarPropKeys(e.target.value)} />
+                  <p className="an-hint" style={{ marginTop: 4 }}>
+                    Esto elimina las propiedades indicadas de las relaciones seleccionadas, no la relación en sí.
+                  </p>
+                </div>
+              )}
+
               <button
                 className={`an-btn-primary ${bulkAccion === "eliminar" ? "an-btn-danger" : ""}`}
                 onClick={handleBulk}
                 disabled={loading}
               >
-                {loading
-                  ? "Procesando..."
-                  : `Ejecutar sobre ${destinosSeleccionados.length} relación(es)`}
+                {loading ? "Procesando..." : `Ejecutar sobre ${destinosSeleccionados.length} relación(es)`}
               </button>
             </>
           )}
 
-          {/* Hint si no se ha seleccionado nodo fuente todavía */}
           {!bulkFuenteId && (
             <p className="an-hint" style={{ marginTop: 8 }}>
               Selecciona un nodo fuente para ver sus relaciones {tipoRel} y operar sobre ellas.

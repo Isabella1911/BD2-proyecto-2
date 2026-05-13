@@ -221,76 +221,10 @@ def eliminar_almacenado_en_bulk(data: BulkPropertyDelete, db: Session = Depends(
     return {"ok": True}
 
 
-# ─── CONECTADOS — endpoint genérico para UI de selección visual ───────────────
+# ─── ENDPOINTS GENÉRICOS PARA TODAS LAS RELACIONES ───────────────────────────
 #
-# GET /relaciones/conectados?tipo=ASIGNADO_A&fuente_id=<uuid>
-#
-# Dado un tipo de relación y el ID del nodo fuente, devuelve todos los
-# nodos destino conectados con id, nombre y extra (campo descriptivo adicional).
-
-_REL_CONECTADOS_QUERY = {
-    "ASIGNADO_A":
-        "MATCH (f:Usuario {id: $fid})-[:ASIGNADO_A]->(d:Supermercado) "
-        "RETURN d.id AS id, d.nombre AS nombre, d.cadena AS extra",
-
-    "SUPERVISA":
-        "MATCH (f:Usuario {id: $fid})-[:SUPERVISA]->(d:Supermercado) "
-        "RETURN d.id AS id, d.nombre AS nombre, d.cadena AS extra",
-
-    "TIENE_INVENTARIO":
-        "MATCH (f:Supermercado {id: $fid})-[:TIENE_INVENTARIO]->(d:Producto) "
-        "RETURN d.id AS id, d.nombre AS nombre, d.categoria AS extra",
-
-    "ALMACENADO_EN":
-        "MATCH (f:Producto {id: $fid})-[:ALMACENADO_EN]->(d:Almacen) "
-        "RETURN d.id AS id, d.nombre AS nombre, d.lugar AS extra",
-
-    "REALIZA_PEDIDO":
-        "MATCH (f:Usuario {id: $fid})-[:REALIZA_PEDIDO]->(d:Orden) "
-        "RETURN d.id AS id, d.estado AS nombre, d.urgencia AS extra",
-
-    "DESTINADA_A":
-        "MATCH (f:Orden {id: $fid})-[:DESTINADA_A]->(d:Supermercado) "
-        "RETURN d.id AS id, d.nombre AS nombre, d.cadena AS extra",
-
-    "INCLUYE":
-        "MATCH (f:Orden {id: $fid})-[:INCLUYE]->(d:Producto) "
-        "RETURN d.id AS id, d.nombre AS nombre, d.categoria AS extra",
-
-    "DESPACHA":
-        "MATCH (f:Almacen {id: $fid})-[:DESPACHA]->(d:Orden) "
-        "RETURN d.id AS id, d.estado AS nombre, d.urgencia AS extra",
-
-    "DISTRIBUYE":
-        "MATCH (f:Transportista {id: $fid})-[:DISTRIBUYE]->(d:Almacen) "
-        "RETURN d.id AS id, d.nombre AS nombre, d.lugar AS extra",
-
-    "TRANSPORTADA_POR":
-        "MATCH (f:Orden {id: $fid})-[:TRANSPORTADA_POR]->(d:Transportista) "
-        "RETURN d.id AS id, d.nombre AS nombre, d.transporte AS extra",
-}
-
-
-@router.get("/conectados")
-def nodos_conectados(tipo: str, fuente_id: str, db: Session = Depends(get_db)):
-    """
-    Devuelve los nodos destino conectados al nodo fuente por el tipo de relación dado.
-    Usado por el UI de selección visual en el bulk de relaciones.
-    """
-    query = _REL_CONECTADOS_QUERY.get(tipo)
-    if not query:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Tipo '{tipo}' no soportado. Válidos: {', '.join(_REL_CONECTADOS_QUERY.keys())}"
-        )
-    result = db.run(query, fid=fuente_id)
-    return [
-        {"id": r["id"], "nombre": r["nombre"], "extra": r["extra"]}
-        for r in result
-    ]
-
-
-# ─── AGREGAR PROPIEDADES GENÉRICO (todos los tipos de relación) ───────────────
+# Mapa compartido entre conectados, agregar-propiedades y eliminar-propiedades.
+# `ids` siempre referencia el nodo destino salvo en ALMACENADO_EN (fuente=Producto).
 
 _REL_MATCH_CLAUSE = {
     "ASIGNADO_A":       "MATCH (:Usuario)-[r:ASIGNADO_A]->(s:Supermercado) WHERE s.id IN $ids",
@@ -305,7 +239,52 @@ _REL_MATCH_CLAUSE = {
     "TRANSPORTADA_POR": "MATCH (:Orden)-[r:TRANSPORTADA_POR]->(t:Transportista) WHERE t.id IN $ids",
 }
 
+_REL_CONECTADOS_QUERY = {
+    "ASIGNADO_A":
+        "MATCH (f:Usuario {id: $fid})-[:ASIGNADO_A]->(d:Supermercado) "
+        "RETURN d.id AS id, d.nombre AS nombre, d.cadena AS extra",
+    "SUPERVISA":
+        "MATCH (f:Usuario {id: $fid})-[:SUPERVISA]->(d:Supermercado) "
+        "RETURN d.id AS id, d.nombre AS nombre, d.cadena AS extra",
+    "TIENE_INVENTARIO":
+        "MATCH (f:Supermercado {id: $fid})-[:TIENE_INVENTARIO]->(d:Producto) "
+        "RETURN d.id AS id, d.nombre AS nombre, d.categoria AS extra",
+    "ALMACENADO_EN":
+        "MATCH (f:Producto {id: $fid})-[:ALMACENADO_EN]->(d:Almacen) "
+        "RETURN d.id AS id, d.nombre AS nombre, d.lugar AS extra",
+    "REALIZA_PEDIDO":
+        "MATCH (f:Usuario {id: $fid})-[:REALIZA_PEDIDO]->(d:Orden) "
+        "RETURN d.id AS id, d.estado AS nombre, d.urgencia AS extra",
+    "DESTINADA_A":
+        "MATCH (f:Orden {id: $fid})-[:DESTINADA_A]->(d:Supermercado) "
+        "RETURN d.id AS id, d.nombre AS nombre, d.cadena AS extra",
+    "INCLUYE":
+        "MATCH (f:Orden {id: $fid})-[:INCLUYE]->(d:Producto) "
+        "RETURN d.id AS id, d.nombre AS nombre, d.categoria AS extra",
+    "DESPACHA":
+        "MATCH (f:Almacen {id: $fid})-[:DESPACHA]->(d:Orden) "
+        "RETURN d.id AS id, d.estado AS nombre, d.urgencia AS extra",
+    "DISTRIBUYE":
+        "MATCH (f:Transportista {id: $fid})-[:DISTRIBUYE]->(d:Almacen) "
+        "RETURN d.id AS id, d.nombre AS nombre, d.lugar AS extra",
+    "TRANSPORTADA_POR":
+        "MATCH (f:Orden {id: $fid})-[:TRANSPORTADA_POR]->(d:Transportista) "
+        "RETURN d.id AS id, d.nombre AS nombre, d.transporte AS extra",
+}
 
+
+# ── GET /conectados ──────────────────────────────────────────────────────────
+@router.get("/conectados")
+def nodos_conectados(tipo: str, fuente_id: str, db: Session = Depends(get_db)):
+    """Devuelve los nodos destino conectados al nodo fuente por el tipo de relación dado."""
+    query = _REL_CONECTADOS_QUERY.get(tipo)
+    if not query:
+        raise HTTPException(status_code=400, detail=f"Tipo '{tipo}' no soportado.")
+    result = db.run(query, fid=fuente_id)
+    return [{"id": r["id"], "nombre": r["nombre"], "extra": r["extra"]} for r in result]
+
+
+# ── PATCH /agregar-propiedades ───────────────────────────────────────────────
 class AgregarPropiedadesRelacion(BaseModel):
     tipo: str
     ids: List[str]
@@ -314,16 +293,34 @@ class AgregarPropiedadesRelacion(BaseModel):
 
 @router.patch("/agregar-propiedades")
 def agregar_propiedades_relacion(data: AgregarPropiedadesRelacion, db: Session = Depends(get_db)):
-    """
-    Agrega 1 o más propiedades nuevas a relaciones de cualquier tipo.
-    Usa coalesce(r.prop, $prop) para NO pisar valores ya existentes.
-    """
+    """Agrega propiedades nuevas a relaciones sin pisar valores existentes (coalesce)."""
     match_clause = _REL_MATCH_CLAUSE.get(data.tipo)
     if not match_clause:
         raise HTTPException(status_code=400, detail=f"Tipo '{data.tipo}' no soportado.")
     if not data.properties:
-        raise HTTPException(status_code=400, detail="No se proporcionaron propiedades")
+        raise HTTPException(status_code=400, detail="No se proporcionaron propiedades.")
 
     set_clause = ", ".join(f"r.{k} = coalesce(r.{k}, ${k})" for k in data.properties)
     db.run(f"{match_clause} SET {set_clause}", ids=data.ids, **data.properties)
     return {"ok": True, "tipo": data.tipo, "affected_ids": len(data.ids)}
+
+
+# ── DELETE /eliminar-propiedades ─────────────────────────────────────────────
+class EliminarPropiedadesRelacion(BaseModel):
+    tipo: str
+    ids: List[str]
+    property_keys: List[str]
+
+
+@router.delete("/eliminar-propiedades")
+def eliminar_propiedades_relacion(data: EliminarPropiedadesRelacion, db: Session = Depends(get_db)):
+    """Elimina 1 o más propiedades de relaciones de cualquier tipo (REMOVE r.prop)."""
+    match_clause = _REL_MATCH_CLAUSE.get(data.tipo)
+    if not match_clause:
+        raise HTTPException(status_code=400, detail=f"Tipo '{data.tipo}' no soportado.")
+    if not data.property_keys:
+        raise HTTPException(status_code=400, detail="No se proporcionaron property_keys.")
+
+    remove_clause = ", ".join(f"r.{k}" for k in data.property_keys)
+    db.run(f"{match_clause} REMOVE {remove_clause}", ids=data.ids)
+    return {"ok": True, "tipo": data.tipo, "affected_ids": len(data.ids), "removed_keys": data.property_keys}

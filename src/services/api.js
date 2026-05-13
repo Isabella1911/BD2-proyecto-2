@@ -548,3 +548,11 @@ export const agregarPropiedadesRelacion = (tipo, ids, properties) =>
 // OBTENER NODOS DESTINO CONECTADOS A UN NODO FUENTE (para el selector visual en bulk)
 export const getConectadosRelacion = (tipo, fuente_id) =>
   request(`/relaciones/conectados?tipo=${tipo}&fuente_id=${fuente_id}`);
+
+// ELIMINAR PROPIEDADES DE RELACIONES (genérico, usa REMOVE)
+export const eliminarPropiedadesRelacion = (tipo, ids, property_keys) =>
+  request("/relaciones/eliminar-propiedades", {
+    method: "DELETE",
+    body: JSON.stringify({ tipo, ids, property_keys }),
+  });
+ 
