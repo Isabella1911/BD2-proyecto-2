@@ -6,6 +6,8 @@ from models import (
     TieneInventarioCreate, AlmacenadoEnCreate,
     BulkPropertyUpdate, BulkPropertyDelete,
 )
+from pydantic import BaseModel
+from typing import List
 
 router = APIRouter(prefix="/api/relaciones", tags=["relaciones"])
 
@@ -220,3 +222,68 @@ def eliminar_almacenado_en_bulk(data: BulkPropertyDelete, db: Session = Depends(
         ids=data.ids,
     )
     return {"ok": True}
+
+
+# ─── AGREGAR PROPIEDADES GENÉRICO (todos los tipos de relación) ───────────────
+#
+# Un solo endpoint que cubre los 10 tipos de relación del sistema.
+# Usa coalesce para NO pisar propiedades ya existentes en la relación.
+#
+# El campo `ids` referencia distintos nodos según el tipo:
+#   ASIGNADO_A       → ids de Supermercado (destino)
+#   SUPERVISA        → ids de Supermercado (destino)
+#   TIENE_INVENTARIO → ids de Producto (destino)
+#   ALMACENADO_EN    → ids de Producto (fuente)
+#   REALIZA_PEDIDO   → ids de Orden (destino)
+#   DESTINADA_A      → ids de Supermercado (destino)
+#   INCLUYE          → ids de Producto (destino)
+#   DESPACHA         → ids de Orden (destino)
+#   DISTRIBUYE       → ids de Almacen (destino)
+#   TRANSPORTADA_POR → ids de Transportista (destino)
+
+_REL_MATCH_CLAUSE = {
+    "ASIGNADO_A":       "MATCH (:Usuario)-[r:ASIGNADO_A]->(s:Supermercado) WHERE s.id IN $ids",
+    "SUPERVISA":        "MATCH (:Usuario)-[r:SUPERVISA]->(s:Supermercado) WHERE s.id IN $ids",
+    "TIENE_INVENTARIO": "MATCH (:Supermercado)-[r:TIENE_INVENTARIO]->(p:Producto) WHERE p.id IN $ids",
+    "ALMACENADO_EN":    "MATCH (p:Producto)-[r:ALMACENADO_EN]->(:Almacen) WHERE p.id IN $ids",
+    "REALIZA_PEDIDO":   "MATCH (:Usuario)-[r:REALIZA_PEDIDO]->(o:Orden) WHERE o.id IN $ids",
+    "DESTINADA_A":      "MATCH (:Orden)-[r:DESTINADA_A]->(s:Supermercado) WHERE s.id IN $ids",
+    "INCLUYE":          "MATCH (:Orden)-[r:INCLUYE]->(p:Producto) WHERE p.id IN $ids",
+    "DESPACHA":         "MATCH (:Almacen)-[r:DESPACHA]->(o:Orden) WHERE o.id IN $ids",
+    "DISTRIBUYE":       "MATCH (:Transportista)-[r:DISTRIBUYE]->(a:Almacen) WHERE a.id IN $ids",
+    "TRANSPORTADA_POR": "MATCH (:Orden)-[r:TRANSPORTADA_POR]->(t:Transportista) WHERE t.id IN $ids",
+}
+
+
+class AgregarPropiedadesRelacion(BaseModel):
+    tipo: str
+    ids: List[str]
+    properties: dict
+
+
+@router.patch("/agregar-propiedades")
+def agregar_propiedades_relacion(data: AgregarPropiedadesRelacion, db: Session = Depends(get_db)):
+    """
+    Agrega 1 o más propiedades nuevas a relaciones de cualquier tipo.
+    Usa coalesce(r.prop, $prop) para NO pisar valores ya existentes.
+    """
+    match_clause = _REL_MATCH_CLAUSE.get(data.tipo)
+    if not match_clause:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Tipo '{data.tipo}' no soportado. Válidos: {', '.join(_REL_MATCH_CLAUSE.keys())}"
+        )
+
+    if not data.properties:
+        raise HTTPException(status_code=400, detail="No se proporcionaron propiedades")
+
+    set_clause = ", ".join(
+        f"r.{k} = coalesce(r.{k}, ${k})" for k in data.properties
+    )
+
+    db.run(
+        f"{match_clause} SET {set_clause}",
+        ids=data.ids,
+        **data.properties,
+    )
+    return {"ok": True, "tipo": data.tipo, "affected_ids": len(data.ids)}

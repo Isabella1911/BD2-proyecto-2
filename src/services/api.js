@@ -536,3 +536,11 @@ export const uploadCSV = (file) => {
 
 export const getTemplateCSV = (tipo) =>
   fetch(`${BASE}/csv/template/${tipo}`).then((r) => r.text());
+
+// Propiedades de Relaciones
+
+export const agregarPropiedadesRelacion = (tipo, ids, properties) =>
+  request("/relaciones/agregar-propiedades", {
+    method: "PATCH",
+    body: JSON.stringify({ tipo, ids, properties }),
+});

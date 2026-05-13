@@ -14,21 +14,19 @@ import {
   actualizarDestinadaA,
   eliminarDestinadaA,
   eliminarDestinadaABulk,
-
   crearIncluye,
   actualizarIncluye,
   eliminarIncluye,
   eliminarIncluyeBulk,
-
   crearDespacha,
   actualizarDespacha,
   eliminarDespacha,
   eliminarDespachaBulk,
-
   crearDistribuye,
   actualizarDistribuye,
   eliminarDistribuye,
   eliminarDistribuyeBulk,
+  agregarPropiedadesRelacion,
 } from "../../services/api";
 
 // ─── Configuración de relaciones ─────────────────────────────────────────────
@@ -50,20 +48,20 @@ const REL_CONFIG = {
     propiedades: ["rol_en_sucursal", "fecha_inicio", "activo"],
   },
   SUPERVISA: {
-  label: "SUPERVISA",
-  descripcion: "(Usuario:Gerente) → (Supermercado)",
-  crear: (b) => crearSupervisa(b),
-  actualizar: (ids, p) => actualizarSupervisa(ids, p),
-  eliminar: (b) => eliminarSupervisa(b.usuario_id, b.supermercado_id),
-  eliminarBulk: (ids) => eliminarSupervisaBulk(ids),
-  campos: [
-    { key: "usuario_id", label: "Usuario ID", type: "text", source: "usuarios" },
-    { key: "supermercado_id", label: "Supermercado ID", type: "text", source: "supermercados" },
-    { key: "fecha_inicio", label: "Fecha inicio", type: "date" },
-    { key: "activo", label: "Activo", type: "boolean" },
-  ],
-  propiedades: ["fecha_inicio", "activo"],
-},
+    label: "SUPERVISA",
+    descripcion: "(Usuario:Gerente) → (Supermercado)",
+    crear: (b) => crearSupervisa(b),
+    actualizar: (ids, p) => actualizarSupervisa(ids, p),
+    eliminar: (b) => eliminarSupervisa(b.usuario_id, b.supermercado_id),
+    eliminarBulk: (ids) => eliminarSupervisaBulk(ids),
+    campos: [
+      { key: "usuario_id", label: "Usuario ID", type: "text", source: "usuarios" },
+      { key: "supermercado_id", label: "Supermercado ID", type: "text", source: "supermercados" },
+      { key: "fecha_inicio", label: "Fecha inicio", type: "date" },
+      { key: "activo", label: "Activo", type: "boolean" },
+    ],
+    propiedades: ["fecha_inicio", "activo"],
+  },
   TIENE_INVENTARIO: {
     label: "TIENE_INVENTARIO",
     descripcion: "(Supermercado) → (Producto)",
@@ -97,92 +95,85 @@ const REL_CONFIG = {
     propiedades: ["cantidad", "fecha_ingreso", "ubicacion"],
   },
   REALIZA_PEDIDO: {
-  label: "REALIZA_PEDIDO",
-  descripcion: "(Usuario:Manager) → (Orden)",
-  crear: (b) => crearRealizaPedido(b),
-  actualizar: (ids, p) => actualizarRealizaPedido(ids, p),
-  eliminar: (b) => eliminarRealizaPedido(b.usuario_id, b.orden_id),
-  eliminarBulk: (ids) => eliminarRealizaPedidoBulk(ids),
-  campos: [
-    { key: "usuario_id", label: "Usuario ID", type: "text", source: "usuarios" },
-    { key: "orden_id", label: "Orden ID", type: "text", source: "ordenes" },
-    { key: "fecha_pedido", label: "Fecha pedido", type: "date" },
-    { key: "aprobado", label: "Aprobado", type: "boolean" },
-    { key: "ubicacion", label: "Ubicación", type: "text" },
-  ],
-  propiedades: ["fecha_pedido", "aprobado", "ubicacion"],
-},
+    label: "REALIZA_PEDIDO",
+    descripcion: "(Usuario:Manager) → (Orden)",
+    crear: (b) => crearRealizaPedido(b),
+    actualizar: (ids, p) => actualizarRealizaPedido(ids, p),
+    eliminar: (b) => eliminarRealizaPedido(b.usuario_id, b.orden_id),
+    eliminarBulk: (ids) => eliminarRealizaPedidoBulk(ids),
+    campos: [
+      { key: "usuario_id", label: "Usuario ID", type: "text", source: "usuarios" },
+      { key: "orden_id", label: "Orden ID", type: "text", source: "ordenes" },
+      { key: "fecha_pedido", label: "Fecha pedido", type: "date" },
+      { key: "aprobado", label: "Aprobado", type: "boolean" },
+      { key: "ubicacion", label: "Ubicación", type: "text" },
+    ],
+    propiedades: ["fecha_pedido", "aprobado", "ubicacion"],
+  },
   DESTINADA_A: {
-  label: "DESTINADA_A",
-  descripcion: "(Orden) → (Supermercado)",
-  crear: (b) => crearDestinadaA(b),
-  actualizar: (ids, p) => actualizarDestinadaA(ids, p),
-  eliminar: (b) => eliminarDestinadaA(b.orden_id, b.supermercado_id),
-  eliminarBulk: (ids) => eliminarDestinadaABulk(ids),
-  campos: [
-    { key: "orden_id", label: "Orden ID", type: "text", source: "ordenes" },
-    { key: "supermercado_id", label: "Supermercado ID", type: "text", source: "supermercados" },
-    { key: "fecha_destino", label: "Fecha destino", type: "date" },
-  ],
-  propiedades: ["fecha_destino"],
-},
+    label: "DESTINADA_A",
+    descripcion: "(Orden) → (Supermercado)",
+    crear: (b) => crearDestinadaA(b),
+    actualizar: (ids, p) => actualizarDestinadaA(ids, p),
+    eliminar: (b) => eliminarDestinadaA(b.orden_id, b.supermercado_id),
+    eliminarBulk: (ids) => eliminarDestinadaABulk(ids),
+    campos: [
+      { key: "orden_id", label: "Orden ID", type: "text", source: "ordenes" },
+      { key: "supermercado_id", label: "Supermercado ID", type: "text", source: "supermercados" },
+      { key: "fecha_destino", label: "Fecha destino", type: "date" },
+    ],
+    propiedades: ["fecha_destino"],
+  },
   INCLUYE: {
-  label: "INCLUYE",
-  descripcion: "(Orden) → (Producto)",
-  crear: (b) => crearIncluye(b),
-  actualizar: (ids, p) => actualizarIncluye(ids, p),
-  eliminar: (b) => eliminarIncluye(b.orden_id, b.producto_id),
-  eliminarBulk: (ids) => eliminarIncluyeBulk(ids),
-  campos: [
-    { key: "orden_id", label: "Orden ID", type: "text", source: "ordenes" },
-    { key: "producto_id", label: "Producto ID", type: "text", source: "productos" },
-    { key: "cantidad", label: "Cantidad", type: "number" },
-    { key: "precio_unitario", label: "Precio unitario", type: "number" },
-    { key: "subtotal", label: "Subtotal", type: "number" },
-    { key: "descuento", label: "Descuento", type: "number" },
-    { key: "devolucion", label: "Devolución", type: "boolean" },
-  ],
-  propiedades: [
-    "cantidad",
-    "precio_unitario",
-    "subtotal",
-    "descuento",
-    "devolucion",
-  ],
-},
+    label: "INCLUYE",
+    descripcion: "(Orden) → (Producto)",
+    crear: (b) => crearIncluye(b),
+    actualizar: (ids, p) => actualizarIncluye(ids, p),
+    eliminar: (b) => eliminarIncluye(b.orden_id, b.producto_id),
+    eliminarBulk: (ids) => eliminarIncluyeBulk(ids),
+    campos: [
+      { key: "orden_id", label: "Orden ID", type: "text", source: "ordenes" },
+      { key: "producto_id", label: "Producto ID", type: "text", source: "productos" },
+      { key: "cantidad", label: "Cantidad", type: "number" },
+      { key: "precio_unitario", label: "Precio unitario", type: "number" },
+      { key: "subtotal", label: "Subtotal", type: "number" },
+      { key: "descuento", label: "Descuento", type: "number" },
+      { key: "devolucion", label: "Devolución", type: "boolean" },
+    ],
+    propiedades: ["cantidad", "precio_unitario", "subtotal", "descuento", "devolucion"],
+  },
   DESPACHA: {
-  label: "DESPACHA",
-  descripcion: "(Almacen) → (Orden)",
-  crear: (b) => crearDespacha(b),
-  actualizar: (ids, p) => actualizarDespacha(ids, p),
-  eliminar: (b) => eliminarDespacha(b.almacen_id, b.orden_id),
-  eliminarBulk: (ids) => eliminarDespachaBulk(ids),
-  campos: [
-    { key: "almacen_id", label: "Almacén ID", type: "text", source: "almacenes" },
-    { key: "orden_id", label: "Orden ID", type: "text", source: "ordenes" },
-    { key: "fecha_despacho", label: "Fecha despacho", type: "date" },
-    { key: "prioridad", label: "Prioridad", type: "select", options: ["Baja", "Media", "Alta", "Urgente"] },
-    { key: "encargado", label: "Encargado", type: "text" },
-  ],
-  propiedades: ["fecha_despacho", "prioridad", "encargado"],
-},
+    label: "DESPACHA",
+    descripcion: "(Almacen) → (Orden)",
+    crear: (b) => crearDespacha(b),
+    actualizar: (ids, p) => actualizarDespacha(ids, p),
+    eliminar: (b) => eliminarDespacha(b.almacen_id, b.orden_id),
+    eliminarBulk: (ids) => eliminarDespachaBulk(ids),
+    campos: [
+      { key: "almacen_id", label: "Almacén ID", type: "text", source: "almacenes" },
+      { key: "orden_id", label: "Orden ID", type: "text", source: "ordenes" },
+      { key: "fecha_despacho", label: "Fecha despacho", type: "date" },
+      { key: "prioridad", label: "Prioridad", type: "select", options: ["Baja", "Media", "Alta", "Urgente"] },
+      { key: "encargado", label: "Encargado", type: "text" },
+    ],
+    propiedades: ["fecha_despacho", "prioridad", "encargado"],
+  },
   DISTRIBUYE: {
-  label: "DISTRIBUYE",
-  descripcion: "(Transportista) → (Almacen)",
-  crear: (b) => crearDistribuye(b),
-  actualizar: (ids, p) => actualizarDistribuye(ids, p),
-  eliminar: (b) => eliminarDistribuye(b.transportista_id, b.almacen_id),
-  eliminarBulk: (ids) => eliminarDistribuyeBulk(ids),
-  campos: [
-    { key: "transportista_id", label: "Transportista ID", type: "text", source: "transportistas" },
-    { key: "almacen_id", label: "Almacén ID", type: "text", source: "almacenes" },
-    { key: "zona", label: "Zona", type: "text" },
-    { key: "activo", label: "Activo", type: "boolean" },
-    { key: "calificacion", label: "Calificación", type: "number" },
-  ],
-  propiedades: ["zona", "activo", "calificacion"],
-},
-  
+    label: "DISTRIBUYE",
+    descripcion: "(Transportista) → (Almacen)",
+    crear: (b) => crearDistribuye(b),
+    actualizar: (ids, p) => actualizarDistribuye(ids, p),
+    eliminar: (b) => eliminarDistribuye(b.transportista_id, b.almacen_id),
+    eliminarBulk: (ids) => eliminarDistribuyeBulk(ids),
+    campos: [
+      { key: "transportista_id", label: "Transportista ID", type: "text", source: "transportistas" },
+      { key: "almacen_id", label: "Almacén ID", type: "text", source: "almacenes" },
+      { key: "zona", label: "Zona", type: "text" },
+      { key: "activo", label: "Activo", type: "boolean" },
+      { key: "calificacion", label: "Calificación", type: "number" },
+    ],
+    propiedades: ["zona", "activo", "calificacion"],
+  },
   TRANSPORTADA_POR: {
     label: "TRANSPORTADA_POR",
     descripcion: "(Orden) → (Transportista)",
@@ -230,11 +221,14 @@ export default function GestionRelaciones() {
   const [fuentes, setFuentes] = useState({});
   const [fuentesCargadas, setFuentesCargadas] = useState({});
 
-  // Para actualización de propiedades bulk
+  // Para operaciones bulk
   const [bulkIds, setBulkIds] = useState("");
   const [bulkPropKey, setBulkPropKey] = useState("");
   const [bulkPropVal, setBulkPropVal] = useState("");
   const [bulkAccion, setBulkAccion] = useState("actualizar");
+
+  // Para agregar múltiples propiedades nuevas
+  const [nuevasPropiedades, setNuevasPropiedades] = useState([{ key: "", value: "" }]);
 
   const cfg = REL_CONFIG[tipoRel];
 
@@ -243,7 +237,6 @@ export default function GestionRelaciones() {
     setTimeout(() => setMsg(null), 3500);
   };
 
-  // Carga la fuente de datos para un campo con source
   const cargarFuente = async (fuente) => {
     if (fuentesCargadas[fuente]) return;
     try {
@@ -256,16 +249,20 @@ export default function GestionRelaciones() {
     }
   };
 
+  // ── Crear ─────────────────────────────────────────────────────────────────
   const handleCrear = async () => {
     setLoading(true);
     try {
       const body = { ...form };
       cfg.campos.forEach((c) => {
+        // Fix: usar ?? "true" para respetar el default visual del select
         if (c.type === "boolean") {
           const val = body[c.key] ?? "true";
           body[c.key] = val === "true" || val === true;
         }
-        if (c.type === "number" && body[c.key] !== undefined) body[c.key] = parseFloat(body[c.key]);
+        if (c.type === "number" && body[c.key] !== undefined) {
+          body[c.key] = parseFloat(body[c.key]);
+        }
       });
       await cfg.crear(body);
       flash(`✓ Relación ${tipoRel} creada`);
@@ -277,6 +274,7 @@ export default function GestionRelaciones() {
     }
   };
 
+  // ── Eliminar 1 ────────────────────────────────────────────────────────────
   const handleEliminar = async () => {
     if (!confirm("¿Eliminar esta relación?")) return;
     setLoading(true);
@@ -291,6 +289,7 @@ export default function GestionRelaciones() {
     }
   };
 
+  // ── Bulk ──────────────────────────────────────────────────────────────────
   const handleBulk = async () => {
     const ids = bulkIds.split(",").map((s) => s.trim()).filter(Boolean);
     if (ids.length === 0) return flash("Ingresa al menos un ID", false);
@@ -299,7 +298,17 @@ export default function GestionRelaciones() {
       if (bulkAccion === "actualizar" && cfg.actualizar) {
         if (!bulkPropKey) return flash("Ingresa el nombre de la propiedad", false);
         await cfg.actualizar(ids, { [bulkPropKey]: bulkPropVal });
-        flash(`✓ Propiedad "${bulkPropKey}" actualizada en relaciones que incluyen esos IDs`);
+        flash(`✓ Propiedad "${bulkPropKey}" actualizada`);
+
+      } else if (bulkAccion === "agregar") {
+        // Usar el endpoint genérico para agregar propiedades nuevas
+        const validas = nuevasPropiedades.filter((p) => p.key.trim() !== "");
+        if (validas.length === 0) return flash("Ingresa al menos una propiedad", false);
+        const properties = Object.fromEntries(validas.map((p) => [p.key.trim(), p.value]));
+        await agregarPropiedadesRelacion(tipoRel, ids, properties);
+        flash(`✓ ${validas.length} propiedad(es) agregada(s) a ${ids.length} relación(es)`);
+        setNuevasPropiedades([{ key: "", value: "" }]);
+
       } else if (bulkAccion === "eliminar" && cfg.eliminarBulk) {
         if (!confirm(`¿Eliminar relaciones con ${ids.length} IDs?`)) {
           setLoading(false);
@@ -316,6 +325,19 @@ export default function GestionRelaciones() {
     }
   };
 
+  // ── Helpers para las filas de propiedades nuevas ──────────────────────────
+  const agregarFilaProp = () =>
+    setNuevasPropiedades((prev) => [...prev, { key: "", value: "" }]);
+
+  const eliminarFilaProp = (i) =>
+    setNuevasPropiedades((prev) => prev.filter((_, idx) => idx !== i));
+
+  const actualizarFilaProp = (i, campo, valor) =>
+    setNuevasPropiedades((prev) =>
+      prev.map((p, idx) => (idx === i ? { ...p, [campo]: valor } : p))
+    );
+
+  // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="admin-nodos">
       {msg && (
@@ -330,7 +352,12 @@ export default function GestionRelaciones() {
           <button
             key={r}
             className={tipoRel === r ? "active" : ""}
-            onClick={() => { setTipoRel(r); setForm({}); setSubTab("crear"); }}
+            onClick={() => {
+              setTipoRel(r);
+              setForm({});
+              setSubTab("crear");
+              setNuevasPropiedades([{ key: "", value: "" }]);
+            }}
           >
             {r}
           </button>
@@ -387,9 +414,7 @@ export default function GestionRelaciones() {
                 >
                   <option value="">— selecciona —</option>
                   {c.options.map((o) => (
-                    <option key={o} value={o}>
-                      {o}
-                    </option>
+                    <option key={o} value={o}>{o}</option>
                   ))}
                 </select>
               ) : (
@@ -418,7 +443,7 @@ export default function GestionRelaciones() {
           ) : (
             <>
               <p className="an-hint">
-                Ingresa los IDs de los nodos extremos para identificar la relación, y los nuevos valores.
+                Selecciona los nodos extremos para identificar la relación y edita los valores.
               </p>
 
               {cfg.campos.map((c) => (
@@ -450,9 +475,7 @@ export default function GestionRelaciones() {
                     >
                       <option value="">— selecciona —</option>
                       {c.options.map((o) => (
-                        <option key={o} value={o}>
-                          {o}
-                        </option>
+                        <option key={o} value={o}>{o}</option>
                       ))}
                     </select>
                   ) : (
@@ -472,12 +495,13 @@ export default function GestionRelaciones() {
                 onClick={async () => {
                   setLoading(true);
                   try {
-                    // Extraer solo propiedades (sin IDs de nodos)
-                    const keys = cfg.campos.filter(c => !c.source).map(c => c.key);
-                    const idKeys = cfg.campos.filter(c => c.source).map(c => c.key);
+                    const idKeys = cfg.campos.filter((c) => c.source).map((c) => c.key);
+                    const propKeys = cfg.campos.filter((c) => !c.source).map((c) => c.key);
                     const ids = [form[idKeys[0]], form[idKeys[1]]].filter(Boolean);
                     const props = {};
-                    keys.forEach(k => { if (form[k] !== undefined && form[k] !== "") props[k] = form[k]; });
+                    propKeys.forEach((k) => {
+                      if (form[k] !== undefined && form[k] !== "") props[k] = form[k];
+                    });
                     await cfg.actualizar(ids, props);
                     flash("✓ Relación actualizada");
                   } catch (e) {
@@ -502,8 +526,8 @@ export default function GestionRelaciones() {
             <p className="an-hint">Esta relación no soporta eliminación directa desde aquí.</p>
           ) : (
             <>
-              <p className="an-hint">Selecciona los nodos extremos para identificar la relación a eliminar.</p>
-              {cfg.campos.filter(c => c.source).map((c) => (
+              <p className="an-hint">Selecciona los nodos extremos para identificar la relación.</p>
+              {cfg.campos.filter((c) => c.source).map((c) => (
                 <div key={c.key} className="an-field">
                   <label>{c.label}</label>
                   <select
@@ -531,8 +555,9 @@ export default function GestionRelaciones() {
         <div className="an-panel">
           <h3>Operaciones masivas en {tipoRel}</h3>
           <p className="an-hint">
-            Ingresa IDs separados por coma. Para ASIGNADO_A, SUPERVISA y TIENE_INVENTARIO, los IDs son de los
-            nodos destino (supermercados o productos).
+            Ingresa IDs separados por coma. Para ASIGNADO_A y SUPERVISA usa IDs de Supermercado;
+            para TIENE_INVENTARIO/INCLUYE usa IDs de Producto; para DESPACHA/REALIZA_PEDIDO usa IDs de Orden;
+            para DISTRIBUYE usa IDs de Almacén; para TRANSPORTADA_POR usa IDs de Transportista.
           </p>
 
           <div className="an-field">
@@ -548,11 +573,13 @@ export default function GestionRelaciones() {
           <div className="an-field">
             <label>Acción</label>
             <select value={bulkAccion} onChange={(e) => setBulkAccion(e.target.value)}>
-              {cfg.actualizar && <option value="actualizar">Actualizar propiedad</option>}
+              {cfg.actualizar && <option value="actualizar">Actualizar propiedad existente</option>}
+              <option value="agregar">Agregar propiedad(es) nueva(s)</option>
               {cfg.eliminarBulk && <option value="eliminar">Eliminar relaciones</option>}
             </select>
           </div>
 
+          {/* Actualizar propiedad existente */}
           {bulkAccion === "actualizar" && (
             <>
               <div className="an-field">
@@ -574,6 +601,48 @@ export default function GestionRelaciones() {
                 />
               </div>
             </>
+          )}
+
+          {/* Agregar propiedades nuevas — UI igual al de Nodos */}
+          {bulkAccion === "agregar" && (
+            <div style={{ marginBottom: 12 }}>
+              <p className="an-hint" style={{ marginBottom: 8 }}>
+                Estas propiedades se agregarán a las relaciones sin pisar valores existentes.
+              </p>
+              {nuevasPropiedades.map((prop, i) => (
+                <div
+                  key={i}
+                  style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center" }}
+                >
+                  <input
+                    type="text"
+                    placeholder="nombre propiedad"
+                    value={prop.key}
+                    onChange={(e) => actualizarFilaProp(i, "key", e.target.value)}
+                    style={{ flex: 1 }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="valor"
+                    value={prop.value}
+                    onChange={(e) => actualizarFilaProp(i, "value", e.target.value)}
+                    style={{ flex: 1 }}
+                  />
+                  {nuevasPropiedades.length > 1 && (
+                    <button
+                      className="an-btn-sm an-btn-danger"
+                      onClick={() => eliminarFilaProp(i)}
+                      title="Eliminar fila"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button className="an-btn-secondary" onClick={agregarFilaProp}>
+                + Agregar otra propiedad
+              </button>
+            </div>
           )}
 
           <button
