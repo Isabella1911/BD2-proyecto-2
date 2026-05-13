@@ -538,9 +538,13 @@ export const getTemplateCSV = (tipo) =>
   fetch(`${BASE}/csv/template/${tipo}`).then((r) => r.text());
 
 // Propiedades de Relaciones
-
+// AGREGAR PROPIEDADES A RELACIONES (genérico, todos los tipos)
 export const agregarPropiedadesRelacion = (tipo, ids, properties) =>
   request("/relaciones/agregar-propiedades", {
     method: "PATCH",
     body: JSON.stringify({ tipo, ids, properties }),
-});
+  });
+ 
+// OBTENER NODOS DESTINO CONECTADOS A UN NODO FUENTE (para el selector visual en bulk)
+export const getConectadosRelacion = (tipo, fuente_id) =>
+  request(`/relaciones/conectados?tipo=${tipo}&fuente_id=${fuente_id}`);
